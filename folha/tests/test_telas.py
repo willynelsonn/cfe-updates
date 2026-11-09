@@ -226,3 +226,17 @@ class AutomacaoTest(TestCase):
         dados = self.client.get(reverse("esocial:situacao_json")).json()
         self.assertEqual(set(dados), {"pendentes", "enviados", "aceitos", "problemas", "lotes_aguardando"})
         self.assertIn("lotes_enviados", self.client.post(reverse("esocial:processar_json")).json())
+
+
+class LoginTest(TestCase):
+    def test_logado_em_entrar_vai_para_o_painel(self):
+        self.client.force_login(get_user_model().objects.create_user("x", password="x"))
+        self.assertRedirects(self.client.get(reverse("login")), reverse("dashboard"), fetch_redirect_response=False)
+
+    def test_seletor_de_cores_no_menu_da_conta(self):
+        self.client.force_login(get_user_model().objects.create_user("y", password="y"))
+        fabrica.empresa()
+        resp = self.client.get(reverse("dashboard"))
+        for cor in ("laranja", "azul", "verde", "roxo", "rosa", "grafite"):
+            self.assertContains(resp, f'data-cor="{cor}"')
+        self.assertContains(resp, 'data-aparencia="auto"')

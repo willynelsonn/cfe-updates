@@ -67,6 +67,40 @@
     });
   });
 
+  // Cor do sistema e aparência (claro/escuro/automático), salvas neste navegador
+  var raizDoc = document.documentElement;
+  function marcarPreferencias() {
+    var cor = raizDoc.dataset.cor || "laranja", tema = raizDoc.dataset.theme || "auto";
+    document.querySelectorAll("[data-cor]").forEach(function (b) {
+      if (b.tagName === "BUTTON") b.setAttribute("aria-pressed", String(b.dataset.cor === cor));
+    });
+    document.querySelectorAll("[data-aparencia]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.aparencia === tema));
+    });
+  }
+  function salvar(chave, valor) { try { valor ? localStorage.setItem(chave, valor) : localStorage.removeItem(chave); } catch (e) {} }
+  document.querySelectorAll("button[data-cor]").forEach(function (b) {
+    b.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      if (b.dataset.cor === "laranja") delete raizDoc.dataset.cor; else raizDoc.dataset.cor = b.dataset.cor;
+      salvar("cor", b.dataset.cor === "laranja" ? null : b.dataset.cor);
+      marcarPreferencias();
+      document.dispatchEvent(new Event("tema-alterado"));
+    });
+  });
+  document.querySelectorAll("[data-aparencia]").forEach(function (b) {
+    b.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      var v = b.dataset.aparencia;
+      if (v === "auto") delete raizDoc.dataset.theme; else raizDoc.dataset.theme = v;
+      salvar("tema", v === "auto" ? null : v);
+      marcarPreferencias();
+      document.dispatchEvent(new Event("tema-alterado"));
+    });
+  });
+  document.addEventListener("tema-alterado", marcarPreferencias);
+  marcarPreferencias();
+
   // Fila do eSocial: processa automaticamente enquanto houver algo em andamento.
   var caixa = document.getElementById("status-esocial");
   if (!caixa) return;

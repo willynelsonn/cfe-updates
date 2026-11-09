@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}FolhaWeb{% endblock %} · FolhaWeb</title>
   <script>
-    try { var t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+    try {
+      var t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.theme = t;
+      var c = localStorage.getItem("cor"); if (c) document.documentElement.dataset.cor = c;
+    } catch (e) {}
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js-anima");
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,9 +78,10 @@
         <button class="btn-icone opcional" type="button" data-tema aria-label="Alternar modo claro/escuro" title="Modo claro/escuro">{% icone "lua" %}</button>
         <div class="mais">
           <button class="avatar" type="button" style="border:0;cursor:pointer" aria-label="Conta" aria-expanded="false" aria-controls="pop-conta" data-alternar="pop-conta">{{ user.get_full_name|default:user.username|iniciais }}</button>
-          <div class="popover" id="pop-conta" style="width:220px">
+          <div class="popover" id="pop-conta" style="width:280px">
             <b>{{ user.get_full_name|default:user.username }}</b>
-            <div class="dica" style="margin-bottom:10px">{{ empresa_ativa|default:"" }}</div>
+            <div class="dica" style="margin-bottom:12px">{{ empresa_ativa|default:"" }}</div>
+            {% include "_preferencias.html" %}
             <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn pequeno" type="submit">{% icone "sair" "sm" %} Sair</button></form>
           </div>
         </div>
@@ -102,7 +106,8 @@
     <a href="{% url 'esocial:guia' %}">{% icone "recibo" %} DCTFWeb e FGTS</a>
     <a href="{% url 'empresas:lista' %}">{% icone "predio" %} Empresas</a>
     <a href="{% url 'folha:rubricas' %}">{% icone "lista" %} Rubricas</a>
-    <a href="#" data-tema>{% icone "lua" %} Modo claro/escuro</a>
+    <div class="sec">Aparência</div>
+    <div style="padding:0 16px">{% include "_preferencias.html" %}</div>
   </nav>
 
   <main class="conteudo" id="conteudo">

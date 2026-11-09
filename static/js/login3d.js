@@ -20,7 +20,10 @@ if (tela) {
   const pos = new Float32Array(total * 3);
   const cores = new Float32Array(total * 3);
   const base = new Float32Array(total * 2);
-  const corFundo = new THREE.Color("#c2410c"), corFrente = new THREE.Color("#ffd2bd"), c = new THREE.Color();
+  const css = getComputedStyle(document.documentElement);
+  const corFundo = new THREE.Color(css.getPropertyValue("--accent-deep").trim() || "#c2410c");
+  const corFrente = new THREE.Color(css.getPropertyValue("--accent-light").trim() || "#f37a4a").lerp(new THREE.Color("#ffffff"), 0.55);
+  const c = new THREE.Color();
   for (let j = 0, k = 0; j < LINHAS; j++) {
     for (let i = 0; i < COLS; i++, k++) {
       const x = (i / (COLS - 1) - 0.5) * LARG, z = (j / (LINHAS - 1) - 0.5) * PROF;
