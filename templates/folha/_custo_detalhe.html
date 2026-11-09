@@ -1,0 +1,9 @@
+{% load ui %}
+<div class="seg-barra" role="img" aria-label="Composição do custo">{% for k, nome, v in custo.grupos %}<div style="width:{% widthratio v custo.total 100 %}%;background:var(--s{{ forloop.counter }})" title="{{ nome }}"></div>{% endfor %}</div>
+<ul class="lista-valores">
+  {% for k, nome, v in custo.grupos %}<li><i style="background:var(--s{{ forloop.counter }})"></i><span>{{ nome }}</span><span class="muted">{% widthratio v custo.total 100 %}%</span><span class="num">{{ v|moeda }}</span></li>{% endfor %}
+</ul>
+<details class="ver-tabela"><summary>Ver cada item do cálculo</summary>
+  <table><tbody>{% for l in custo.linhas %}<tr><td>{{ l.descricao }}<div class="dica" style="margin:0">{{ l.explicacao }}</div></td><td class="num">{{ l.valor|moeda }}</td></tr>{% endfor %}</tbody>
+  <tfoot><tr><td>Custo mensal</td><td class="num">{{ custo.total|moeda }}</td></tr></tfoot></table>
+</details>

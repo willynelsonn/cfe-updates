@@ -21,13 +21,16 @@ sistema mostra uma prévia dos valores para conferência.
 | Férias | Programação com conferência da CLT (arts. 130, 134, 135, 137, 143 e 145), período aquisitivo sugerido, médias de variáveis, 1/3, abono pecuniário, INSS e IRRF, divisão do gozo entre meses, aviso e recibo para imprimir e S-2230 |
 | 13º salário | 1ª parcela na folha do mês (natureza 5504, até 30/11), 2ª parcela com INSS e IRRF exclusivos e desconto do adiantamento (5001/9214), S-1200 e S-1299 anuais |
 | Impostos 2026 | INSS progressivo, IRRF com a redução da Lei 15.270/2025, salário-família, FGTS 8% (aprendiz 2%) |
+| Rescisão | TRCT por motivo (sem justa causa, justa causa, pedido de demissão, acordo 484-A, término e antecipação de contrato a termo, culpa recíproca, falecimento): aviso proporcional (Lei 12.506) com projeção, saldo, 13º e férias proporcionais, férias vencidas (em dobro se o prazo passou), arts. 479/480, desconto de aviso não cumprido, INSS/IRRF separados para o 13º, FGTS do mês e multa de 40%/20%, prazo de 10 dias, S-2299 com as verbas e pagamento no S-1210 (tpPgto 2) |
+| Custos | Custo mensal real de cada funcionário (salário, encargos patronais, FGTS, provisões de 13º/férias/multa e benefícios), custo da equipe por cargo e simulador "quanto custa contratar" |
+| Painel | Indicadores, gráfico de custo da folha em 12 meses, agenda de prazos legais, pendências, composição do custo, custo por cargo, status do eSocial; modo claro/escuro e celular |
 | Guias | DARF da DCTFWeb e GFD do FGTS Digital com valores estimados e vencimentos; DARF em PDF pela API Integra Contador (SERPRO), quando contratada |
 | Conformidade | Painel de pendências legais com base legal: admissão fora do prazo, salário abaixo do mínimo, jornada, idade, férias vencidas e a vencer, 13º, prazos do eSocial, 5º dia útil, guias vencendo |
 | eSocial | S-1000, S-1005, S-1010, S-1020, S-2200, S-2230, S-2299, S-1200, S-1210 e S-1299, validados nos XSDs oficiais, assinados e transmitidos em lotes |
 
 ## Ainda não faz (próximos passos sugeridos)
 
-1. **Rescisão (TRCT)**: o S-2299 é enviado, mas as verbas rescisórias ainda precisam ser calculadas fora.
+1. Rescisão de contrato intermitente, de aprendiz e por motivos não listados; homologação/seguro-desemprego (informados pelo próprio eSocial).
 2. **Retificação** de folha já enviada (S-1200 com `indRetif = 2`) e exclusão de eventos (S-3000).
 3. Afastamentos por doença/maternidade (S-2230 com outros motivos), alterações contratuais (S-2205/S-2206) e SST (S-2210/S-2220/S-2240).
 4. Férias em dobro, férias coletivas, pensão alimentícia, consignado, horistas e intermitentes.
@@ -41,6 +44,7 @@ Pesquisei a regra vigente, mas estes itens não puderam ser conferidos no texto 
 
 - Rubricas de férias da NT S-1.3 04/2025: adiantamento **1015**, gozo **1016/1017** e compensação **9221**, além das incidências escolhidas para elas (`folha/models.py`, `RUBRICAS_PADRAO`).
 - Abono pecuniário com natureza **1023** e incidência de IRRF **74** (isento).
+- Rescisão: naturezas **6006/6007** (férias indenizadas), **6129** (art. 479) e **9299** (desconto de aviso), e incidência de IRRF **73** para verbas indenizatórias. As naturezas 6000 a 6003 foram conferidas na Tabela 03.
 - Retenção antecipada do INSS das férias com natureza **9200** (rubrica 9209), quando o gozo é em mês seguinte ao pagamento.
 - A redução da Lei 15.270/2025 aplicada ao **13º** e às **férias** (`redutor_irrf_13` e `redutor_irrf_ferias` em `folha/tabelas.py`).
 - O nome do serviço do Integra Contador para o DARF (`GERARGUIA31`, configurável).

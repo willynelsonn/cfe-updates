@@ -1,5 +1,4 @@
 from datetime import date
-from decimal import Decimal as D
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -43,7 +42,7 @@ class TelasTest(TestCase):
             "sexo": "F", "raca_cor": 1, "grau_instrucao": "07", "cep": "01310-100", "logradouro": "Rua A",
             "numero": "10", "cod_municipio": "3550308", "uf": "SP", "data_admissao": "2026-10-16", "categoria": "101",
             "cargo": cargo.pk, "salario": "2400.00", "tipo_contrato": 1, "horas_semanais": "44", "tipo_jornada": 3,
-            "descricao_jornada": "Seg a sáb", "insalubridade": 0, "vale_transporte": "0",
+            "descricao_jornada": "Seg a sáb", "insalubridade": 0, "vale_transporte": "0", "beneficios_mensais": "0",
         })
         self.assertEqual(resp.status_code, 302, resp.context and resp.context["form"].errors)
         func = Funcionario.objects.get(matricula="10")
@@ -131,7 +130,7 @@ class AutomacaoTest(TestCase):
             "sexo": "M", "raca_cor": 1, "grau_instrucao": "07", "cep": "01310100", "logradouro": "Rua B",
             "numero": "1", "cod_municipio": "3550308", "uf": "SP", "data_admissao": "2026-12-01", "categoria": "101",
             "cargo": cargo.pk, "salario": "2000", "tipo_contrato": 1, "horas_semanais": "44", "tipo_jornada": 3,
-            "descricao_jornada": "Seg a sex", "insalubridade": 0, "vale_transporte": "0",
+            "descricao_jornada": "Seg a sex", "insalubridade": 0, "vale_transporte": "0", "beneficios_mensais": "0",
         })
         ev = Evento.objects.get(tipo="S-2200")
         self.assertIn("S-1000", ev.depende)

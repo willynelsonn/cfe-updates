@@ -126,7 +126,7 @@ class DecimoTerceiroTest(TestCase):
         self.assertEqual(c.avos_13(2026, date(2025, 1, 1), date(2026, 6, 14)), 5)
 
     def test_primeira_e_segunda_parcela(self):
-        f = fabrica.funcionario(self.emp, salario=D("6000"), data_admissao=date(2026, 3, 17))
+        fabrica.funcionario(self.emp, salario=D("6000"), data_admissao=date(2026, 3, 17))
         nov = fabrica.competencia(self.emp, mes=11, data_adiantamento_13=date(2026, 11, 27))
         calcular_competencia(nov)
         ad = nov.holerites.get(tipo="adiant13")

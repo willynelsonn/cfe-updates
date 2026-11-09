@@ -398,9 +398,16 @@ def calcular_competencia(competencia: Competencia) -> list[str]:
 
     competencia.holerites.all().delete()
     avisos: list[str] = []
+    from .models import Rescisao
+
+    # Quem foi desligado no mês recebe o saldo de salário na rescisão (S-2299), não na folha.
+    rescindidos = set(Rescisao.objects.filter(
+        funcionario__empresa=empresa, data_desligamento__gte=competencia.inicio,
+        data_desligamento__lte=competencia.fim,
+    ).exclude(status="cancelada").values_list("funcionario_id", flat=True)) if not competencia.decimo_terceiro else set()
     funcionarios = [
         f for f in Funcionario.objects.filter(empresa=empresa).prefetch_related("dependentes")
-        if f.ativo_na_competencia(competencia.ano, competencia.mes)
+        if f.ativo_na_competencia(competencia.ano, competencia.mes) and f.pk not in rescindidos
     ]
 
     if competencia.decimo_terceiro:

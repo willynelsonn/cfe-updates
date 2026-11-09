@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Rescisões{% endblock %}
+{% block content %}
+<div class="topo">
+  <div><h1>Rescisões</h1><div class="subtitulo">Cálculo do TRCT com as regras de cada motivo, envio do S-2299 com as verbas e controle do prazo de 10 dias.</div></div>
+  <a class="btn primario" href="{% url 'folha:rescisao_nova' %}">{% icone "mais" %} Calcular rescisão</a>
+</div>
+<div class="tabela"><table>
+  <thead><tr><th>Funcionário</th><th>Motivo</th><th>Último dia</th><th>Pagar até</th><th class="num">Líquido</th><th class="num">Multa FGTS</th><th>Situação</th></tr></thead>
+  <tbody>{% for r in object_list %}
+    <tr><td><div class="pessoa"><span class="avatar">{{ r.funcionario.nome|iniciais }}</span><div><a href="{% url 'folha:rescisao_detalhe' r.pk %}">{{ r.funcionario.nome }}</a><small>matr. {{ r.funcionario.matricula }}</small></div></div></td>
+    <td>{{ r.get_motivo_display|slice:"5:" }}</td><td>{{ r.data_desligamento|date:"d/m/Y" }}</td><td>{{ r.data_pagamento|date:"d/m/Y" }}</td>
+    <td class="num">{{ r.liquido|moeda }}</td><td class="num">{{ r.multa_fgts|moeda }}</td><td><span class="tag {{ r.status }}">{{ r.get_status_display }}</span></td></tr>
+  {% empty %}<tr><td colspan="7"><div class="vazio">{% icone "saida" %}<p>Nenhuma rescisão calculada.</p></div></td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

@@ -3,23 +3,16 @@
 {% block content %}
 <div class="topo"><h1>{{ titulo }}</h1></div>
 {% if explicacao %}<div class="explica">{{ explicacao }}</div>{% endif %}
-{% if aviso %}<div class="msg warning">{{ aviso }}</div>{% endif %}
+{% if aviso %}<div class="msg warning"><div>{{ aviso }}</div></div>{% endif %}
 <form method="post" class="card" {% if multipart or form.is_multipart %}enctype="multipart/form-data"{% endif %}>
   {% csrf_token %}
   {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors }}</div>{% endif %}
   <div class="form-grid">
-    {% for campo in form %}
-      <div class="campo">
-        <label for="{{ campo.id_for_label }}">{{ campo.label }}{% if campo.field.required %} *{% endif %}</label>
-        {{ campo }}
-        {% if campo.help_text %}<div class="ajuda">{{ campo.help_text }}</div>{% endif %}
-        {% for e in campo.errors %}<div class="erro">{{ e }}</div>{% endfor %}
-      </div>
-    {% endfor %}
+    {% for campo in form %}{% include "_campo.html" %}{% endfor %}
   </div>
-  <p class="acoes" style="margin-top:16px">
+  <div class="rodape-form">
     <button class="btn primario" type="submit" data-ocupado="Salvando">{{ botao|default:"Salvar" }}</button>
-    <a class="btn" href="javascript:history.back()">Cancelar</a>
-  </p>
+    <a class="btn fantasma" href="javascript:history.back()">Cancelar</a>
+  </div>
 </form>
 {% endblock %}

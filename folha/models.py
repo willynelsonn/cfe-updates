@@ -37,6 +37,15 @@ class Rubrica(models.Model):
         ("irrf_ferias", "IRRF sobre férias"),
         ("inss_ferias", "INSS sobre férias (gozo no mês do pagamento)"),
         ("inss_ferias_ant", "Retenção antecipada do INSS das férias (gozo em mês seguinte)"),
+        # Rescisão
+        ("resc_saldo", "Saldo de salário (rescisão)"),
+        ("resc_aviso", "Aviso prévio indenizado"),
+        ("resc_13", "13º proporcional (rescisão)"),
+        ("resc_13_aviso", "13º sobre aviso prévio indenizado"),
+        ("resc_ferias_prop", "Férias proporcionais + 1/3 (indenizadas)"),
+        ("resc_ferias_venc", "Férias vencidas + 1/3 (indenizadas)"),
+        ("resc_479", "Indenização do art. 479 da CLT"),
+        ("resc_desc_aviso", "Desconto de aviso prévio / art. 480"),
         # 13º salário
         ("adiant13", "Adiantamento do 13º (1ª parcela)"),
         ("dec13", "13º salário"),
@@ -63,9 +72,11 @@ class Rubrica(models.Model):
         ("33", "33 - Retenção IRRF férias"),
         ("41", "41 - Dedução: previdência oficial mensal"),
         ("42", "42 - Dedução: previdência oficial 13º"),
+        ("73", "73 - Isento: indenização por rescisão"),
         ("74", "74 - Isento: abono pecuniário"),
     ]
-    INC_FGTS = [("00", "00 - Não é base"), ("11", "11 - Base mensal"), ("12", "12 - Base 13º salário")]
+    INC_FGTS = [("00", "00 - Não é base"), ("11", "11 - Base mensal"), ("12", "12 - Base 13º salário"),
+                ("21", "21 - Base aviso prévio indenizado")]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="rubricas")
     codigo = models.CharField("código", max_length=30)
@@ -139,6 +150,15 @@ RUBRICAS_PADRAO = [
     ("9216", "Vale-transporte", 2, "9216", "00", "9", "00", "vale_transporte"),
     ("9221", "Compensação do adiantamento de férias", 2, "9221", "00", "9", "00", "ferias_comp"),
     ("9200", "Adiantamento salarial", 2, "9200", "00", "9", "00", ""),
+    # Rescisão (S-2299). Naturezas 6000-6003 conferidas na Tabela 03; 6006/6007/6129/9299 a confirmar.
+    ("6000", "Saldo de salário", 1, "6000", "11", "11", "11", "resc_saldo"),
+    ("6001", "13º salário sobre aviso prévio indenizado", 1, "6001", "12", "12", "12", "resc_13_aviso"),
+    ("6002", "13º salário proporcional", 1, "6002", "12", "12", "12", "resc_13"),
+    ("6003", "Aviso prévio indenizado", 1, "6003", "00", "73", "21", "resc_aviso"),
+    ("6006", "Férias proporcionais + 1/3 (indenizadas)", 1, "6006", "00", "73", "00", "resc_ferias_prop"),
+    ("6007", "Férias vencidas + 1/3 (indenizadas)", 1, "6007", "00", "73", "00", "resc_ferias_venc"),
+    ("6129", "Indenização do art. 479 da CLT", 1, "6129", "00", "73", "00", "resc_479"),
+    ("9299", "Desconto de aviso prévio não cumprido / art. 480", 2, "9299", "00", "9", "00", "resc_desc_aviso"),
 ]
 
 
@@ -298,6 +318,75 @@ class Ferias(models.Model):
             if p["ano"] == ano and p["mes"] == mes:
                 return p["dias"]
         return 0
+
+
+class Rescisao(models.Model):
+    """Rescisão do contrato de trabalho (TRCT) — CLT arts. 477 a 487."""
+
+    AVISO = [
+        ("indenizado", "Aviso prévio indenizado (empresa paga sem trabalhar)"),
+        ("trabalhado", "Aviso prévio trabalhado"),
+        ("dispensado", "Pedido de demissão com aviso dispensado pela empresa"),
+        ("nao_cumprido", "Pedido de demissão sem cumprir o aviso (desconto)"),
+        ("nenhum", "Sem aviso prévio (justa causa, término de contrato, falecimento)"),
+    ]
+    STATUS = [("calculada", "Calculada"), ("enviada", "Enviada ao eSocial"), ("cancelada", "Cancelada")]
+
+    funcionario = models.ForeignKey(
+        Funcionario, on_delete=models.CASCADE, related_name="rescisoes", verbose_name="funcionário"
+    )
+    motivo = models.CharField(max_length=2, choices=Funcionario.MOTIVO_DESLIGAMENTO)
+    data_aviso = models.DateField("data do aviso", null=True, blank=True)
+    tipo_aviso = models.CharField("aviso prévio", max_length=12, choices=AVISO, default="indenizado")
+    data_desligamento = models.DateField(
+        "último dia trabalhado", help_text="Com aviso indenizado, é o dia da comunicação da dispensa."
+    )
+    data_pagamento = models.DateField(
+        "data do pagamento", help_text="Até 10 dias corridos após o término do contrato (CLT art. 477, §6º)."
+    )
+    saldo_fgts = models.DecimalField(
+        "saldo do FGTS para fins rescisórios (R$)", max_digits=12, decimal_places=2, default=Decimal("0"),
+        help_text="Do extrato do FGTS Digital. Usado para estimar a multa de 40% (ou 20% no acordo).",
+    )
+    faltas_periodo_ferias = models.PositiveSmallIntegerField(
+        "faltas injustificadas no período aquisitivo atual", default=0
+    )
+    status = models.CharField(max_length=10, choices=STATUS, default="calculada")
+
+    dias_aviso = models.PositiveSmallIntegerField(default=0)
+    data_projetada = models.DateField("término projetado (com aviso)", null=True, blank=True)
+    total_proventos = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    total_descontos = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    liquido = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    valor_inss = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    valor_irrf = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    fgts_rescisorio = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    multa_fgts = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    itens = models.JSONField(default=list, blank=True)
+    memoria = models.JSONField(default=dict, blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-data_desligamento"]
+        verbose_name = "rescisão"
+        verbose_name_plural = "rescisões"
+
+    def __str__(self):
+        return f"Rescisão de {self.funcionario.nome} em {self.data_desligamento:%d/%m/%Y}"
+
+    @property
+    def prazo_pagamento(self) -> date:
+        return self.data_desligamento + timedelta(days=10)
+
+    @property
+    def per_apur(self):
+        return f"{self.data_desligamento.year}-{self.data_desligamento.month:02d}"
+
+    @property
+    def ide_dm_dev(self):
+        return f"RE{self.data_desligamento:%Y%m}{self.funcionario.matricula}"[:30]
+
+    eh_rescisao = True  # usado na montagem do S-1210 (tpPgto = 2)
 
 
 class Holerite(models.Model):

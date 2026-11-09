@@ -1,32 +1,36 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Funcionários{% endblock %}
 {% block content %}
-<div class="topo"><h1>Funcionários</h1><a class="btn primario" href="{% url 'pessoal:novo' %}">Novo funcionário</a></div>
-<form method="get" class="acoes" style="margin-bottom:12px">
-  <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Nome, CPF ou matrícula" class="btn" style="min-width:240px">
-  <select name="situacao" class="btn">
-    {% with s=request.GET.situacao|default:"ativos" %}
+<div class="topo">
+  <div><h1>Funcionários</h1><div class="subtitulo">Ao cadastrar, a admissão vai sozinha para o eSocial. Clique no nome para ver custo, férias, holerites e rescisão.</div></div>
+  <a class="btn primario" href="{% url 'pessoal:novo' %}">{% icone "mais" %} Admitir funcionário</a>
+</div>
+<form method="get" class="acoes" style="margin-bottom:14px" role="search">
+  <label class="sr-only" for="busca">Buscar</label>
+  <input id="busca" type="search" name="q" value="{{ request.GET.q }}" placeholder="Buscar por nome, CPF ou matrícula" class="entrada" style="max-width:320px">
+  {% with s=request.GET.situacao|default:"ativos" %}
+  <label class="sr-only" for="situacao">Situação</label>
+  <select id="situacao" name="situacao" class="entrada" style="max-width:170px" onchange="this.form.submit()">
     <option value="ativos" {% if s == "ativos" %}selected{% endif %}>Ativos</option>
     <option value="desligados" {% if s == "desligados" %}selected{% endif %}>Desligados</option>
     <option value="todos" {% if s == "todos" %}selected{% endif %}>Todos</option>
-    {% endwith %}
   </select>
-  <button class="btn">Filtrar</button>
+  {% endwith %}
+  <button class="btn">Buscar</button>
 </form>
 <div class="tabela"><table>
-  <thead><tr><th>Matr.</th><th>Nome</th><th>CPF</th><th>Cargo</th><th>Admissão</th><th class="num">Salário</th><th>Situação</th></tr></thead>
+  <thead><tr><th>Funcionário</th><th>CPF</th><th>Admissão</th><th class="num">Salário</th><th>Situação</th></tr></thead>
   <tbody>
   {% for f in object_list %}
     <tr>
-      <td>{{ f.matricula }}</td>
-      <td><a href="{% url 'pessoal:detalhe' f.pk %}">{{ f.nome }}</a></td>
+      <td><div class="pessoa"><span class="avatar">{{ f.nome|iniciais }}</span><div><a href="{% url 'pessoal:detalhe' f.pk %}">{{ f.nome }}</a><small>{{ f.cargo.nome }} · matr. {{ f.matricula }}</small></div></div></td>
       <td>{{ f.cpf_formatado }}</td>
-      <td>{{ f.cargo.nome }}</td>
       <td>{{ f.data_admissao|date:"d/m/Y" }}</td>
-      <td class="num">{{ f.salario|floatformat:"2g" }}</td>
-      <td>{% if f.ativo %}<span class="tag aceito">ativo</span>{% else %}<span class="tag">desligado em {{ f.data_desligamento|date:"d/m/Y" }}</span>{% endif %}</td>
+      <td class="num">{{ f.salario|moeda }}</td>
+      <td>{% if f.ativo %}<span class="tag aceito">Ativo</span>{% else %}<span class="tag">Desligado {{ f.data_desligamento|date:"d/m/Y" }}</span>{% endif %}</td>
     </tr>
-  {% empty %}<tr><td colspan="7" class="muted">Nenhum funcionário encontrado.</td></tr>{% endfor %}
+  {% empty %}<tr><td colspan="5"><div class="vazio">{% icone "pessoas" %}<p>Nenhum funcionário encontrado.</p><a class="btn primario" href="{% url 'pessoal:novo' %}">Admitir o primeiro</a></div></td></tr>{% endfor %}
   </tbody>
 </table></div>
 {% endblock %}

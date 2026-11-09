@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -14,6 +15,7 @@ from esocial.servico import (
     ErroESocial,
     data_pagamento_padrao,
     fechar_competencia,
+    gerar_desligamento,
     gerar_ferias,
     tentar_processar,
 )
@@ -21,9 +23,11 @@ from pessoal.models import Funcionario
 
 from . import calculo as c
 from .conformidade import problemas_ferias, proximo_periodo_aquisitivo
-from .forms import CompetenciaForm, FechamentoForm, FeriasForm, LancamentoForm, RubricaForm
+from .custo import aliquota_encargos, custo_mensal, custos_da_empresa
+from .forms import CompetenciaForm, FechamentoForm, FeriasForm, LancamentoForm, RescisaoForm, RubricaForm
 from .guias import atualizar_guias, emitir_darf
-from .models import Competencia, Ferias, Guia, Holerite, Lancamento, Rubrica, criar_rubricas_padrao
+from .models import Competencia, Ferias, Guia, Holerite, Lancamento, Rescisao, Rubrica, criar_rubricas_padrao
+from .rescisao import REGRAS, ErroRescisao, calcular_rescisao, problemas_rescisao
 from .servico import ErroCalculo, calcular_competencia, calcular_ferias, resumo_encargos
 from .tabelas import tabela_atualizada, tabelas_do_ano
 
@@ -440,3 +444,125 @@ def guia_paga(request, pk):
     g.save(update_fields=["status", "atualizada_em"])
     messages.success(request, f"{g.get_tipo_display()} marcada como paga.")
     return redirect("folha:guias", pk=g.competencia_id)
+
+
+# ---------------------------------------------------------------------------
+# Rescisão
+# ---------------------------------------------------------------------------
+
+
+class RescisaoListView(EmpresaRequiredMixin, ListView):
+    model = Rescisao
+    template_name = "folha/rescisoes.html"
+
+    def get_queryset(self):
+        return Rescisao.objects.filter(funcionario__empresa=self.empresa).select_related("funcionario")
+
+
+@login_required
+def rescisao_nova(request):
+    if request.empresa is None:
+        return redirect("empresas:nova")
+    initial = {"data_desligamento": timezone.localdate(), "data_aviso": timezone.localdate()}
+    if fid := request.GET.get("funcionario"):
+        initial["funcionario"] = get_object_or_404(Funcionario, pk=fid, empresa=request.empresa)
+    form = RescisaoForm(request.POST or None, empresa=request.empresa, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        resc = form.save()
+        try:
+            calcular_rescisao(resc)
+        except ErroRescisao as exc:
+            resc.delete()
+            messages.error(request, str(exc))
+            return render(request, "folha/rescisao_form.html", {"form": form, "regras": REGRAS})
+        messages.success(request, f"Rescisão calculada: líquido de R$ {resc.liquido} a pagar até "
+                                  f"{resc.data_pagamento:%d/%m/%Y}.")
+        if request.empresa.envio_automatico:
+            try:
+                gerar_desligamento(resc.funcionario)
+            except ErroESocial as exc:
+                messages.warning(request, str(exc))
+            else:
+                messages.info(request, "O desligamento (S-2299) com as verbas foi para a fila do eSocial.")
+            if problema := tentar_processar(request.empresa):
+                messages.warning(request, problema)
+        return redirect("folha:rescisao_detalhe", pk=resc.pk)
+    return render(request, "folha/rescisao_form.html", {"form": form, "regras": REGRAS})
+
+
+def _rescisao(request, pk):
+    return get_object_or_404(Rescisao.objects.select_related("funcionario__cargo", "funcionario__empresa"),
+                             pk=pk, funcionario__empresa=request.empresa)
+
+
+@login_required
+def rescisao_detalhe(request, pk):
+    resc = _rescisao(request, pk)
+    return render(request, "folha/rescisao_detalhe.html", {
+        "r": resc, "regra": REGRAS.get(resc.motivo), "problemas": problemas_rescisao(resc),
+        "proventos": [i for i in resc.itens if i["tipo"] == "provento"],
+        "descontos": [i for i in resc.itens if i["tipo"] == "desconto"],
+        "eventos": resc.funcionario.evento_set.filter(tipo="S-2299"),
+    })
+
+
+@login_required
+def rescisao_trct(request, pk):
+    resc = _rescisao(request, pk)
+    return render(request, "folha/rescisao_trct.html", {
+        "r": resc, "regra": REGRAS.get(resc.motivo),
+        "proventos": [i for i in resc.itens if i["tipo"] == "provento"],
+        "descontos": [i for i in resc.itens if i["tipo"] == "desconto"],
+    })
+
+
+@login_required
+@require_POST
+def rescisao_cancelar(request, pk):
+    resc = _rescisao(request, pk)
+    if resc.funcionario.evento_set.filter(tipo="S-2299", status__in=["enviado", "aceito"]).exists():
+        messages.error(request, "O desligamento já foi enviado ao eSocial; a reversão precisa de exclusão (S-3000) "
+                                "com o contador.")
+        return redirect("folha:rescisao_detalhe", pk=pk)
+    resc.status = "cancelada"
+    resc.save(update_fields=["status"])
+    f = resc.funcionario
+    f.data_desligamento = None
+    f.motivo_desligamento = ""
+    f.aviso_previo_indenizado = False
+    f.save(update_fields=["data_desligamento", "motivo_desligamento", "aviso_previo_indenizado", "atualizado_em"])
+    f.evento_set.filter(tipo="S-2299", status__in=["pendente", "erro", "rejeitado"]).delete()
+    messages.success(request, "Rescisão cancelada; o funcionário voltou a ficar ativo.")
+    return redirect("pessoal:detalhe", pk=f.pk)
+
+
+# ---------------------------------------------------------------------------
+# Custos
+# ---------------------------------------------------------------------------
+
+
+@login_required
+def custos(request):
+    if request.empresa is None:
+        return redirect("empresas:nova")
+    lista = custos_da_empresa(request.empresa)
+    total = sum((cu.total for _, cu in lista), Decimal("0"))
+    simulacao = None
+    salario_sim = request.GET.get("salario", "").replace(".", "").replace(",", ".")
+    if salario_sim:
+        try:
+            valor = Decimal(salario_sim)
+            if valor > 0:
+                simulacao = custo_mensal(
+                    request.empresa, valor, vale_transporte=Decimal(request.GET.get("vt") or 0),
+                    beneficios=Decimal(request.GET.get("beneficios") or 0),
+                    periculosidade=bool(request.GET.get("periculosidade")),
+                )
+        except InvalidOperation:
+            messages.error(request, "Informe o salário em reais, ex.: 2500,00.")
+    aliq, partes = aliquota_encargos(request.empresa)
+    return render(request, "folha/custos.html", {
+        "lista": lista, "total": total, "anual": total * 12, "simulacao": simulacao,
+        "aliq_encargos": aliq, "partes_encargos": partes,
+        "media": (total / len(lista)) if lista else Decimal("0"),
+    })

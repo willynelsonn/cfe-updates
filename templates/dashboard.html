@@ -1,56 +1,151 @@
 {% extends "base.html" %}
-{% block title %}Início{% endblock %}
+{% load static ui %}
+{% block title %}Painel{% endblock %}
+{% block titulo_topo %}Painel{% endblock %}
 {% block content %}
-<div class="topo"><h1>{% if empresa_ativa %}{{ empresa_ativa.razao_social }}{% else %}Bem-vindo ao FolhaWeb{% endif %}</h1></div>
 {% if not empresa_ativa %}
-  <div class="acao destaque" style="max-width:520px">
-    <h3>Cadastre a primeira empresa</h3>
-    <p>Comece pelos dados do empregador (CNPJ, CNAE, tributação). Depois você envia o certificado digital e cadastra os funcionários.</p>
-    <a class="btn primario" href="{% url 'empresas:nova' %}">Cadastrar empresa</a>
-  </div>
+<div class="card vazio" style="max-width:560px;margin:40px auto">
+  {% icone "predio" %}
+  <h2>Comece cadastrando a empresa</h2>
+  <p>Informe CNPJ, CNAE e tributação. Depois envie o certificado digital e cadastre os funcionários — o resto o FolhaWeb faz sozinho.</p>
+  <a class="btn primario" href="{% url 'empresas:nova' %}">{% icone "mais" %} Cadastrar empresa</a>
+</div>
 {% else %}
-<div class="grid">
-  <div class="card kpi"><div class="valor">{{ ativos }}</div><div class="rotulo">funcionários ativos</div></div>
-  <div class="card kpi"><div class="valor">{{ competencia|default:"—" }}</div><div class="rotulo">última folha {% if competencia %}<span class="tag {{ competencia.status }}">{{ competencia.get_status_display }}</span>{% endif %}</div></div>
-  <div class="card kpi"><div class="valor">{{ fila.pendentes|add:fila.enviados }}</div><div class="rotulo">eventos em andamento no eSocial</div></div>
-  <div class="card kpi"><div class="valor">{{ alertas|length }}</div><div class="rotulo">pendências legais</div></div>
-</div>
-
-<h2>O que você quer fazer?</h2>
-<div class="acoes-grid">
-  <div class="acao destaque">
-    <h3>Apurar a folha do mês</h3>
-    <p>Calcula salários, INSS, IRRF e FGTS de todos, gera os holerites e envia tudo ao eSocial. Lance antes as horas extras e faltas.</p>
-    <a class="btn primario" href="{% if competencia and competencia.status != 'fechada' %}{% url 'folha:competencia' competencia.pk %}{% else %}{% url 'folha:competencia_nova' %}{% endif %}">Ir para a folha</a>
+<div class="topo">
+  <div>
+    <h1>{{ saudacao }}, {{ user.first_name|default:user.username }}</h1>
+    <div class="subtitulo">{{ empresa_ativa.razao_social }} · {{ hoje|date:"l, d \d\e F \d\e Y" }}</div>
   </div>
-  <div class="acao">
-    <h3>Admitir funcionário</h3>
-    <p>Cadastre os dados pessoais e o contrato. A admissão (S-2200) é enviada ao eSocial automaticamente — faça até o dia anterior ao início.</p>
-    <a class="btn" href="{% url 'pessoal:novo' %}">Novo funcionário</a>
-  </div>
-  <div class="acao">
-    <h3>Programar férias</h3>
-    <p>O sistema confere as regras da CLT, calcula o recibo com 1/3 e o abono, gera o aviso e envia o S-2230.</p>
-    <a class="btn" href="{% url 'folha:ferias_nova' %}">Programar férias</a>
-  </div>
-  <div class="acao">
-    <h3>13º salário</h3>
-    <p>1ª parcela: informe a data na folha de novembro (até 30/11). 2ª parcela: apure aqui até 20/12.</p>
-    <a class="btn" href="{% url 'folha:decimo_terceiro' %}">Apurar 13º de {{ hoje.year|stringformat:"d" }}</a>
+  <div class="acoes">
+    <a class="btn" href="{% url 'folha:custos' %}" title="Quanto custa contratar alguém com determinado salário">{% icone "calculadora" %} Simular contratação</a>
+    <a class="btn" href="{% url 'pessoal:novo' %}" title="Cadastra e já envia a admissão ao eSocial">{% icone "mais" %} Admitir</a>
+    {% if competencia_aberta %}
+      <a class="btn primario" href="{% url 'folha:competencia' competencia_aberta.pk %}" title="Calcular e enviar a folha deste mês">{% icone "folha" %} Apurar folha de {{ competencia_aberta }}</a>
+    {% else %}
+      <a class="btn primario" href="{% url 'folha:competencia_nova' %}" title="Abrir a folha do próximo mês">{% icone "folha" %} Abrir folha do mês</a>
+    {% endif %}
   </div>
 </div>
 
-<h2>Pendências legais</h2>
-<p class="muted">Conferência automática com a CLT, a legislação previdenciária e os prazos do eSocial. Resolva primeiro as urgentes.</p>
-{% include "_alertas.html" %}
-{% if not alertas %}<div class="msg success">Nenhuma pendência encontrada. Tudo em dia!</div>{% endif %}
+<section class="kpis" aria-label="Indicadores principais">
+  <div class="kpi">
+    <div class="rotulo">{% icone "pessoas" "sm" %} Funcionários ativos</div>
+    <div class="valor">{{ ativos }}</div>
+    <div data-grafico="sparkline" data-fonte="dados-hc"></div>
+    <div class="rodape"><span>{{ admissoes_mes }} admiss{{ admissoes_mes|pluralize:"ão,ões" }} · {{ desligamentos_mes }} desligamento{{ desligamentos_mes|pluralize }} no mês</span><span>rotatividade 12m {{ turnover_12m|pct }}</span></div>
+  </div>
+  <div class="kpi">
+    <div class="rotulo">{% icone "custo" "sm" %} Custo mensal da equipe</div>
+    <div class="valor">{{ custo_mensal|compacto }}</div>
+    <div class="rodape"><span>cada R$ 1 de salário custa <b>R$ {{ multiplicador|numero }}</b></span><span>média {{ custo_medio|moeda }} por pessoa</span></div>
+  </div>
+  <div class="kpi">
+    <div class="rotulo">{% icone "folha" "sm" %} Última folha calculada</div>
+    <div class="valor">{% if ultima_folha_total %}{{ ultima_folha_total|compacto }}{% else %}—{% endif %}</div>
+    <div class="rodape">
+      {% if variacao_folha is not None %}<span class="delta {% if variacao_folha > 0.05 %}sobe-ruim{% elif variacao_folha < -0.05 %}desce-bom{% else %}neutro{% endif %}">{% if variacao_folha > 0 %}▲{% elif variacao_folha < 0 %}▼{% endif %} {{ variacao_folha|pct }}</span> vs. mês anterior{% else %}<span>salários + encargos + FGTS</span>{% endif %}
+    </div>
+  </div>
+  <div class="kpi">
+    <div class="rotulo">{% icone "recibo" "sm" %} Guias em aberto</div>
+    <div class="valor">{% if guias_abertas %}{{ a_pagar|compacto }}{% else %}—{% endif %}</div>
+    <div class="rodape">{% if proximo_venc %}<span>próximo vencimento <b>{{ proximo_venc|date:"d/m" }}</b></span>{% else %}<span>nenhuma guia pendente</span>{% endif %}</div>
+  </div>
+</section>
+{{ hc_valores|json_script:"dados-hc" }}
 
-{% if proximas_ferias %}
-<div class="card"><h2>Próximas férias</h2><ul>
-  {% for fe in proximas_ferias %}<li><a href="{% url 'folha:ferias_detalhe' fe.pk %}">{{ fe.funcionario.nome }}</a> — {{ fe.inicio|date:"d/m/Y" }} a {{ fe.fim|date:"d/m/Y" }} (pagar até {{ fe.data_pagamento|date:"d/m/Y" }})</li>{% endfor %}
-</ul></div>
-{% endif %}
+<div class="cols-2">
+  <section class="card" aria-labelledby="t-custo">
+    <div class="card-cab">
+      <div><h2 id="t-custo">Custo da folha nos últimos 12 meses</h2><span class="dica">Desembolso por competência calculada. Passe o mouse sobre um mês para ver os valores.</span></div>
+    </div>
+    <div class="legenda">{% for s in serie_folha.series %}<span><i style="background:var({{ s.cor }})"></i>{{ s.nome }}</span>{% endfor %}</div>
+    <div class="grafico" data-grafico="colunas" data-fonte="dados-folha"></div>
+    {{ serie_folha|json_script:"dados-folha" }}
+    <details class="ver-tabela"><summary>Ver como tabela</summary>
+      <table><thead><tr><th>Mês</th><th class="num">Remuneração</th><th class="num">Encargos</th><th class="num">FGTS</th></tr></thead>
+      <tbody>{% for m in folha_serie %}<tr><td>{{ m.rotulo }}</td><td class="num">{{ m.remuneracao|moeda }}</td><td class="num">{{ m.encargos|moeda }}</td><td class="num">{{ m.fgts|moeda }}</td></tr>{% endfor %}</tbody></table>
+    </details>
+  </section>
 
-{% if empresa_ativa.ambiente_esocial == 2 %}<div class="msg warning">Ambiente de <strong>testes</strong> do eSocial (produção restrita): os envios não têm validade legal. Quando tudo estiver conferido, mude para Produção no cadastro da empresa.</div>{% endif %}
+  <section class="card" aria-labelledby="t-agenda">
+    <div class="card-cab"><div><h2 id="t-agenda">Agenda</h2><span class="dica">Prazos legais dos próximos 45 dias</span></div></div>
+    {% if agenda %}
+    <ul class="agenda">
+      {% for it in agenda|slice:":8" %}
+      <li class="{% if it.dias <= 3 %}urgente{% endif %}">
+        <div class="dia"><b>{{ it.data|date:"d" }}</b><small>{{ it.data|date:"M" }}</small></div>
+        <div><a class="t" href="{{ it.url }}">{{ it.titulo }}</a><div class="d">{{ it.detalhe }}</div></div>
+        <span class="falta">{% if it.dias == 0 %}hoje{% elif it.dias == 1 %}amanhã{% else %}em {{ it.dias }} dias{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<div class="vazio">{% icone "calendario" %}<p>Nada vencendo nos próximos dias.</p></div>{% endif %}
+  </section>
+</div>
+
+<div class="cols-2">
+  <section class="card" aria-labelledby="t-pend">
+    <div class="card-cab">
+      <div><h2 id="t-pend">Pendências legais {% if criticos %}<span class="badge">{{ criticos }} urgente{{ criticos|pluralize }}</span>{% endif %}</h2>
+      <span class="dica">Conferência automática com a CLT, a previdência e os prazos do eSocial</span></div>
+    </div>
+    {% if alertas %}
+      {% with alertas=alertas|slice:":7" compacto=True %}{% include "_alertas.html" %}{% endwith %}
+      {% if alertas|length > 7 %}<details class="ver-tabela"><summary>Ver mais {{ alertas|length|add:"-7" }} pendência(s)</summary><div style="margin-top:8px">{% with alertas=alertas|slice:"7:" compacto=True %}{% include "_alertas.html" %}{% endwith %}</div></details>{% endif %}
+      <p class="dica" style="margin-top:10px">Passe o mouse sobre uma pendência para ver o detalhe, ou abra o item para resolver.</p>
+    {% else %}
+      <div class="vazio">{% icone "escudo" %}<p><b>Tudo em dia.</b> Nenhuma pendência legal encontrada.</p></div>
+    {% endif %}
+  </section>
+
+  <div>
+    <section class="card" aria-labelledby="t-comp">
+      <div class="card-cab"><div><h2 id="t-comp">Para onde vai o dinheiro</h2><span class="dica">Custo mensal da equipe ativa: {{ custo_mensal|moeda }}</span></div></div>
+      {% if composicao %}
+      <div class="seg-barra" role="img" aria-label="Composição do custo mensal">{% for c in composicao %}<div style="width:{{ c.pct|stringformat:".2f" }}%;background:var(--s{{ forloop.counter }})" title="{{ c.nome }}: {{ c.pct|pct }}"></div>{% endfor %}</div>
+      <ul class="lista-valores">{% for c in composicao %}<li><i style="background:var(--s{{ forloop.counter }})"></i><span>{{ c.nome }}</span><span class="muted">{{ c.pct|pct }}</span><span class="num">{{ c.valor|moeda }}</span></li>{% endfor %}</ul>
+      {% else %}<div class="vazio"><p>Cadastre funcionários para ver os custos.</p></div>{% endif %}
+    </section>
+    <section class="card" aria-labelledby="t-esocial">
+      <div class="card-cab"><div><h2 id="t-esocial">eSocial</h2><span class="dica">{% if total_eventos %}{{ fila.aceitos }} de {{ total_eventos }} eventos aceitos{% else %}Nenhum evento enviado ainda{% endif %}</span></div><a class="btn pequeno" href="{% url 'esocial:eventos' %}">Abrir</a></div>
+      <div class="medidor" role="meter" aria-valuenow="{{ pct_aceitos|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100" aria-label="Eventos aceitos"><div style="width:{{ pct_aceitos|floatformat:0 }}%"></div></div>
+      <ul class="lista-valores">
+        <li><i style="background:var(--warn-line)"></i><span>Na fila</span><span></span><span class="num">{{ fila.pendentes }}</span></li>
+        <li><i style="background:var(--s1)"></i><span>Com o governo</span><span></span><span class="num">{{ fila.enviados }}</span></li>
+        <li><i style="background:var(--err-line)"></i><span>Com erro</span><span></span><span class="num">{% if fila.problemas %}<a href="{% url 'esocial:eventos' %}?status=rejeitado">{{ fila.problemas }}</a>{% else %}0{% endif %}</span></li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<div class="cols-meio">
+  <section class="card" aria-labelledby="t-cargo">
+    <div class="card-cab"><div><h2 id="t-cargo">Custo mensal por cargo</h2><span class="dica">Inclui encargos, provisões e benefícios</span></div><a class="btn pequeno" href="{% url 'folha:custos' %}">Detalhar</a></div>
+    {% if cargos %}
+    <div class="barras-h">
+      {% with maior=cargos.0.valor %}
+      {% for c in cargos %}<div class="item" title="{{ c.cargo }}: {{ c.valor|moeda }} ({{ c.pessoas }} pessoa{{ c.pessoas|pluralize }})">
+        <span class="rot">{{ c.cargo }} <span class="muted">· {{ c.pessoas }}</span></span>
+        <div class="trilho"><div class="preenche" style="width:{% widthratio c.valor maior 100 %}%"></div></div>
+        <span class="val">{{ c.valor|compacto }}</span></div>{% endfor %}
+      {% endwith %}
+    </div>
+    {% else %}<div class="vazio"><p>Sem funcionários ativos.</p></div>{% endif %}
+  </section>
+  <section class="card" aria-labelledby="t-ferias">
+    <div class="card-cab"><div><h2 id="t-ferias">Próximas férias</h2><span class="dica">Programadas e calculadas</span></div><a class="btn pequeno" href="{% url 'folha:ferias_nova' %}">{% icone "mais" "sm" %} Programar</a></div>
+    {% if proximas_ferias %}
+    <ul class="agenda">{% for fe in proximas_ferias %}
+      <li><div class="dia"><b>{{ fe.inicio|date:"d" }}</b><small>{{ fe.inicio|date:"M" }}</small></div>
+      <div><a class="t" href="{% url 'folha:ferias_detalhe' fe.pk %}">{{ fe.funcionario.nome }}</a><div class="d">{{ fe.dias }} dias · pagar até {{ fe.data_pagamento|date:"d/m" }}</div></div>
+      <span class="falta">{{ fe.liquido|moeda }}</span></li>{% endfor %}
+    </ul>
+    {% else %}<div class="vazio">{% icone "ferias" %}<p>Nenhuma férias programada.</p></div>{% endif %}
+  </section>
+</div>
+
+{% if empresa_ativa.ambiente_esocial == 2 %}<div class="msg warning">{% icone "info" %}<div>Ambiente de <strong>testes</strong> do eSocial (produção restrita): os envios não têm validade legal. Quando tudo estiver conferido, mude para Produção no cadastro da empresa.</div></div>{% endif %}
 {% endif %}
 {% endblock %}
+{% block scripts %}<script src="{% static 'js/graficos.js' %}"></script>{% endblock %}

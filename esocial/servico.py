@@ -51,6 +51,10 @@ def chave_s1010(rubrica) -> str:
     return f"S-1010:{rubrica.codigo}"
 
 
+def chave_s1010_codigo(codigo: str) -> str:
+    return f"S-1010:{codigo}"
+
+
 def chave_s1200(competencia, funcionario) -> str:
     return f"S-1200:{competencia.per_apur}:func:{funcionario.pk}"
 
@@ -124,11 +128,19 @@ def gerar_admissao(funcionario) -> Evento:
 
 
 def gerar_desligamento(funcionario) -> Evento:
+    from folha.models import Rescisao
+
     if not funcionario.data_desligamento or not funcionario.motivo_desligamento:
         raise ErroESocial("Informe a data e o motivo do desligamento no cadastro do funcionário.")
+    resc = Rescisao.objects.filter(funcionario=funcionario).exclude(status="cancelada").first()
+    if resc:
+        sincronizar_tabelas(funcionario.empresa)  # rubricas de rescisão precisam estar no eSocial
+    deps = _dep_admissao(funcionario) + (
+        sorted({chave_s1010_codigo(i["codigo"]) for i in resc.itens}) if resc else []
+    )
     return _registrar(
-        funcionario.empresa, "S-2299", f"Desligamento de {funcionario.nome}", *xe.s2299(funcionario),
-        chave=f"S-2299:func:{funcionario.pk}", depende=_dep_admissao(funcionario), funcionario=funcionario,
+        funcionario.empresa, "S-2299", f"Desligamento de {funcionario.nome}", *xe.s2299(funcionario, resc),
+        chave=f"S-2299:func:{funcionario.pk}", depende=deps, funcionario=funcionario,
     )
 
 
@@ -156,7 +168,7 @@ def fechar_competencia(competencia: Competencia, transmitir_dctfweb: bool = Fals
     if not holerites:
         raise ErroESocial("Nenhum holerite calculado nesta competência.")
 
-    pagos_no_mes: list[Holerite] = []
+    pagos_no_mes: list = []
     if not competencia.decimo_terceiro:
         pagos_no_mes = list(
             Holerite.objects.filter(
@@ -188,12 +200,22 @@ def fechar_competencia(competencia: Competencia, transmitir_dctfweb: bool = Fals
             funcionario=func, competencia=competencia, per_apur=competencia.per_apur,
         ))
 
-    pg_por_cpf: dict[str, list[Holerite]] = defaultdict(list)
+    if not competencia.decimo_terceiro:
+        from folha.models import Rescisao
+
+        pagos_no_mes += list(Rescisao.objects.filter(
+            funcionario__empresa=empresa, data_pagamento__gte=competencia.inicio,
+            data_pagamento__lte=competencia.fim,
+        ).exclude(status="cancelada").select_related("funcionario"))
+    pg_por_cpf: dict[str, list] = defaultdict(list)
     for h in pagos_no_mes:
         pg_por_cpf[h.funcionario.cpf].append(h)
     for cpf, hs in pg_por_cpf.items():
         func = hs[0].funcionario
-        deps = sorted({chave_s1200(h.competencia, func) for h in hs})
+        deps = sorted({
+            f"S-2299:func:{func.pk}" if getattr(h, "eh_rescisao", False) else chave_s1200(h.competencia, func)
+            for h in hs
+        })
         id_evento, root = xe.s1210(empresa, competencia.per_apur, cpf, hs)
         eventos.append(_registrar(
             empresa, "S-1210", f"Pagamentos de {competencia} - {func.nome}", id_evento, root,

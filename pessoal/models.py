@@ -120,6 +120,11 @@ class Funcionario(models.Model):
         help_text="Custo mensal do VT. Desconto de até 6% do salário-base.",
     )
 
+    beneficios_mensais = models.DecimalField(
+        "outros benefícios pagos pela empresa (R$/mês)", max_digits=10, decimal_places=2, default=Decimal("0"),
+        help_text="Plano de saúde, vale-refeição/alimentação etc. Usado no cálculo do custo do funcionário.",
+    )
+
     # Pagamento
     banco = models.CharField(max_length=3, blank=True)
     agencia = models.CharField("agência", max_length=10, blank=True)

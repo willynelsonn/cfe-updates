@@ -1,63 +1,87 @@
-{% load static %}<!doctype html>
+{% load static ui %}<!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}FolhaWeb{% endblock %} · FolhaWeb</title>
+  <script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
+{% include "_icones.html" %}
 {% if user.is_authenticated %}
+{% with ns=request.resolver_match.namespace nome=request.resolver_match.url_name %}
 <div class="layout">
-  <aside class="sidebar">
-    <a class="brand" href="{% url 'dashboard' %}">FolhaWeb</a>
-    {% if empresas_disponiveis %}
-    <form method="post" action="">
-      {% csrf_token %}
-      <select aria-label="Empresa em que você está trabalhando" title="Troque aqui a empresa em que você está trabalhando"
-              onchange="this.form.action=this.value; this.form.submit()">
-        {% for e in empresas_disponiveis %}
-          <option value="{% url 'empresas:selecionar' e.pk %}" {% if empresa_ativa and e.pk == empresa_ativa.pk %}selected{% endif %}>{{ e }}</option>
-        {% endfor %}
-      </select>
-    </form>
-    {% endif %}
-    {% with ns=request.resolver_match.namespace nome=request.resolver_match.url_name %}
-    <nav>
-      <a href="{% url 'dashboard' %}" class="{% if nome == 'dashboard' %}ativo{% endif %}">Início{% if pendencias_criticas %}<span class="badge" title="Pendências legais críticas">{{ pendencias_criticas }}</span>{% endif %}</a>
-      <div class="secao">Rotina mensal</div>
-      <a href="{% url 'folha:competencias' %}" class="{% if ns == 'folha' and nome in 'competencias competencia competencia_nova guias holerite' %}ativo{% endif %}">Folha do mês</a>
-      <a href="{% url 'folha:ferias' %}" class="{% if nome|slice:':6' == 'ferias' %}ativo{% endif %}">Férias</a>
-      <a href="{% url 'folha:decimo_terceiro' %}" class="{% if nome == 'decimo_terceiro' %}ativo{% endif %}">13º salário</a>
-      <div class="secao">Cadastros</div>
-      <a href="{% url 'pessoal:lista' %}" class="{% if ns == 'pessoal' and nome != 'cargos' %}ativo{% endif %}">Funcionários</a>
-      <a href="{% url 'pessoal:cargos' %}" class="{% if nome == 'cargos' %}ativo{% endif %}">Cargos</a>
-      <a href="{% url 'folha:rubricas' %}" class="{% if nome == 'rubricas' %}ativo{% endif %}">Rubricas</a>
-      <a href="{% url 'empresas:lista' %}" class="{% if ns == 'empresas' %}ativo{% endif %}">Empresas</a>
-      <div class="secao">Governo</div>
-      <a href="{% url 'esocial:eventos' %}" class="{% if ns == 'esocial' and nome != 'guia' %}ativo{% endif %}">eSocial</a>
-      <a href="{% url 'esocial:guia' %}" class="{% if nome == 'guia' %}ativo{% endif %}">Como pagar as guias</a>
-      <div class="secao">Conta</div>
-      {% if user.is_staff %}<a href="{% url 'admin:index' %}">Administração</a>{% endif %}
-      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn pequeno" style="margin:6px 10px">Sair ({{ user.username }})</button></form>
+  <aside class="sidebar" id="sidebar" aria-label="Menu principal">
+    <a class="brand" href="{% url 'dashboard' %}"><span class="logo">FW</span><span>FolhaWeb<small>Departamento pessoal</small></span></a>
+    <nav class="nav">
+      <a href="{% url 'dashboard' %}" class="{% if nome == 'dashboard' %}ativo{% endif %}">{% icone "inicio" %} Painel{% if pendencias_criticas %}<span class="badge" title="Pendências legais urgentes">{{ pendencias_criticas }}</span>{% endif %}</a>
+
+      <div class="nav-sec">Rotina</div>
+      <a href="{% url 'folha:competencias' %}" class="{% if ns == 'folha' and nome in 'competencias competencia competencia_nova competencia_editar guias holerite holerites_impressao' %}ativo{% endif %}">{% icone "folha" %} Folha do mês</a>
+      <a href="{% url 'folha:ferias' %}" class="{% if nome|slice:':6' == 'ferias' %}ativo{% endif %}">{% icone "ferias" %} Férias</a>
+      <a href="{% url 'folha:decimo_terceiro' %}" class="{% if nome == 'decimo_terceiro' %}ativo{% endif %}">{% icone "presente" %} 13º salário</a>
+      <a href="{% url 'folha:rescisoes' %}" class="{% if nome|slice:':8' == 'rescisao' or nome == 'rescisoes' %}ativo{% endif %}">{% icone "saida" %} Rescisões</a>
+
+      <div class="nav-sec">Pessoas e custos</div>
+      <a href="{% url 'pessoal:lista' %}" class="{% if ns == 'pessoal' and nome != 'cargos' and nome != 'cargo_editar' %}ativo{% endif %}">{% icone "pessoas" %} Funcionários</a>
+      <a href="{% url 'folha:custos' %}" class="{% if nome == 'custos' %}ativo{% endif %}">{% icone "custo" %} Custos da equipe</a>
+      <a href="{% url 'pessoal:cargos' %}" class="{% if nome == 'cargos' or nome == 'cargo_editar' %}ativo{% endif %}">{% icone "maleta" %} Cargos</a>
+
+      <div class="nav-sec">Governo</div>
+      <a href="{% url 'esocial:eventos' %}" class="{% if ns == 'esocial' and nome != 'guia' %}ativo{% endif %}">{% icone "enviar" %} eSocial</a>
+      <a href="{% url 'esocial:guia' %}" class="{% if nome == 'guia' %}ativo{% endif %}">{% icone "recibo" %} DCTFWeb e FGTS</a>
+
+      <div class="nav-sec">Configurações</div>
+      <a href="{% url 'empresas:lista' %}" class="{% if ns == 'empresas' %}ativo{% endif %}">{% icone "predio" %} Empresas</a>
+      <a href="{% url 'folha:rubricas' %}" class="{% if nome|slice:':7' == 'rubrica' %}ativo{% endif %}">{% icone "lista" %} Rubricas</a>
+      {% if user.is_staff %}<a href="{% url 'admin:index' %}">{% icone "engrenagem" %} Administração</a>{% endif %}
     </nav>
-    {% endwith %}
     {% if empresa_ativa %}
-    <div id="status-esocial" class="status-esocial" title="A fila do eSocial é processada automaticamente enquanto esta tela estiver aberta."
-         data-processar="{% url 'esocial:processar_json' %}" data-situacao="{% url 'esocial:situacao_json' %}"
-         data-recarregar="{% block recarregar %}0{% endblock %}">
-      <span class="pulso"></span><span class="texto">Verificando eSocial…</span>
+    <div class="sidebar-rodape">
+      <div id="status-esocial" class="status-esocial" role="status" aria-live="polite"
+           title="Enquanto o sistema estiver aberto, a fila do eSocial é processada automaticamente."
+           data-processar="{% url 'esocial:processar_json' %}" data-situacao="{% url 'esocial:situacao_json' %}"
+           data-recarregar="{% block recarregar %}0{% endblock %}">
+        <span class="pulso"></span><span class="texto">Verificando eSocial…</span>
+      </div>
     </div>
     {% endif %}
   </aside>
-  <main class="main">
-    {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
-    {% block content %}{% endblock %}
-  </main>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn-icone menu-movel" type="button" aria-label="Abrir menu" aria-controls="sidebar" data-abrir-menu>{% icone "menu" %}</button>
+      <div class="migalha">{% block migalha %}<strong>{% block titulo_topo %}{% endblock %}</strong>{% endblock %}</div>
+      <div class="espaco"></div>
+      {% if empresas_disponiveis %}
+      <form method="post" class="seletor-empresa" title="Empresa em que você está trabalhando">
+        {% csrf_token %}{% icone "predio" "sm" %}
+        <label class="sr-only" for="trocar-empresa">Empresa</label>
+        <select id="trocar-empresa" onchange="this.form.action=this.value; this.form.submit()">
+          {% for e in empresas_disponiveis %}
+          <option value="{% url 'empresas:selecionar' e.pk %}" {% if empresa_ativa and e.pk == empresa_ativa.pk %}selected{% endif %}>{{ e }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      {% endif %}
+      <button class="btn-icone" type="button" data-tema aria-label="Alternar modo claro/escuro" title="Modo claro/escuro">{% icone "lua" %}</button>
+      <form method="post" action="{% url 'logout' %}" class="inline">{% csrf_token %}
+        <button class="btn-icone" type="submit" aria-label="Sair" title="Sair ({{ user.username }})">{% icone "sair" %}</button>
+      </form>
+      <span class="avatar" title="{{ user.get_full_name|default:user.username }}">{{ user.get_full_name|default:user.username|iniciais }}</span>
+    </header>
+    <main class="conteudo" id="conteudo">
+      {% for m in messages %}<div class="msg {{ m.tags }}" role="status">{% if m.tags == 'error' %}{% icone "alerta" %}{% elif m.tags == 'success' %}{% icone "ok" %}{% else %}{% icone "info" %}{% endif %}<div>{{ m }}</div></div>{% endfor %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
 </div>
+{% endwith %}
 {% else %}
-  <main class="main">{% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}{% block anon %}{% endblock %}</main>
+  {% block anon %}{% endblock %}
 {% endif %}
 <script src="{% static 'js/app.js' %}"></script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

@@ -110,6 +110,16 @@ class FuncionarioDetailView(EmpresaRequiredMixin, DetailView):
         ctx["eventos"] = self.object.evento_set.all()[:20]
         ctx["holerites"] = self.object.holerites.select_related("competencia")[:12]
         ctx["ferias"] = self.object.ferias.exclude(status="cancelada")[:6]
+        ctx["rescisoes"] = self.object.rescisoes.exclude(status="cancelada")
+        from django.utils import timezone
+
+        from folha.custo import custo_funcionario
+
+        ctx["custo"] = custo_funcionario(self.object)
+        hoje = timezone.localdate()
+        fim = self.object.data_desligamento or hoje
+        dias = (fim - self.object.data_admissao).days
+        ctx["tempo_casa"] = (dias // 365, (dias % 365) // 30)
         return ctx
 
 

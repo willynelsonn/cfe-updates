@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Rescisão de {{ r.funcionario.nome }}{% endblock %}
+{% block content %}
+<div class="topo">
+  <div><h1>Rescisão de {{ r.funcionario.nome }} <span class="tag {{ r.status }}">{{ r.get_status_display }}</span></h1>
+    <div class="subtitulo">{{ regra.descricao }} · último dia {{ r.data_desligamento|date:"d/m/Y" }}{% if r.data_projetada != r.data_desligamento %} · com a projeção do aviso, o contrato termina em {{ r.data_projetada|date:"d/m/Y" }}{% endif %}</div></div>
+  <div class="acoes">
+    <a class="btn" href="{% url 'folha:rescisao_trct' r.pk %}" target="_blank" title="Termo de rescisão para o empregado assinar">{% icone "imprimir" %} Imprimir TRCT</a>
+    {% if r.status != 'cancelada' %}<form class="inline" method="post" action="{% url 'folha:rescisao_cancelar' r.pk %}" data-confirmar="Cancelar esta rescisão? O funcionário volta a ficar ativo.">{% csrf_token %}<button class="btn perigo" title="Desfaz o desligamento (só antes de o eSocial receber)">Cancelar rescisão</button></form>{% endif %}
+  </div>
+</div>
+{% for t, d, b in problemas %}<div class="alerta critico" style="margin-bottom:12px"><span class="ic">{% icone "alerta" %}</span><div class="t">{{ t }}</div><div class="d">{{ d }}</div><div class="lei">Base legal: {{ b }}</div></div>{% endfor %}
+
+<section class="kpis">
+  <div class="kpi"><div class="rotulo">Líquido a pagar ao empregado</div><div class="valor">{{ r.liquido|moeda }}</div><div class="rodape">até <b>{{ r.data_pagamento|date:"d/m/Y" }}</b> (prazo legal {{ r.prazo_pagamento|date:"d/m" }})</div></div>
+  <div class="kpi"><div class="rotulo">Multa do FGTS</div><div class="valor">{{ r.multa_fgts|moeda }}</div><div class="rodape">{{ r.memoria.multa_pct|floatformat:0 }}% · paga na guia do FGTS Digital</div></div>
+  <div class="kpi"><div class="rotulo">FGTS do mês rescisório</div><div class="valor">{{ r.fgts_rescisorio|moeda }}</div><div class="rodape">8% sobre {{ r.memoria.base_fgts|moeda }}</div></div>
+  <div class="kpi"><div class="rotulo">Custo total da rescisão</div><div class="valor">{{ r.total_proventos|add:r.multa_fgts|add:r.fgts_rescisorio|moeda }}</div><div class="rodape">verbas + multa + FGTS</div></div>
+</section>
+
+<div class="cols-2">
+  <section class="card">
+    <h2>Verbas rescisórias</h2>
+    <table>
+      <thead><tr><th>Cód.</th><th>Descrição</th><th class="num">Ref.</th><th class="num">Valor</th></tr></thead>
+      <tbody>
+        {% for i in proventos %}<tr><td>{{ i.codigo }}</td><td>{{ i.descricao }}</td><td class="num">{% if i.referencia %}{{ i.referencia|numero:"0" }}{% endif %}</td><td class="num">{{ i.valor|moeda }}</td></tr>{% endfor %}
+        {% for i in descontos %}<tr><td>{{ i.codigo }}</td><td>(−) {{ i.descricao }}</td><td class="num">{% if i.referencia %}{{ i.referencia|numero:"0" }}{% endif %}</td><td class="num">−{{ i.valor|moeda }}</td></tr>{% endfor %}
+      </tbody>
+      <tfoot><tr><td></td><td>Total bruto</td><td></td><td class="num">{{ r.total_proventos|moeda }}</td></tr>
+      <tr><td></td><td>Líquido</td><td></td><td class="num">{{ r.liquido|moeda }}</td></tr></tfoot>
+    </table>
+  </section>
+  <div>
+    <section class="card">
+      <h2>Memória de cálculo</h2>
+      <ul class="lista-valores">
+        <li><span></span><span>Remuneração-base</span><span></span><span class="num">{{ r.memoria.remuneracao|moeda }}</span></li>
+        <li><span></span><span>Aviso prévio</span><span></span><span class="num">{{ r.dias_aviso }} dias · {% if r.tipo_aviso == "indenizado" %}indenizado{% elif r.tipo_aviso == "trabalhado" %}trabalhado{% elif r.tipo_aviso == "nenhum" %}sem aviso{% else %}do empregado{% endif %}</span></li>
+        <li><span></span><span>Saldo de salário</span><span></span><span class="num">{{ r.memoria.dias_saldo }} dias</span></li>
+        <li><span></span><span>13º (avos)</span><span></span><span class="num">{{ r.memoria.avos_13.ate_desligamento }} + {{ r.memoria.avos_13.projecao_aviso }} da projeção</span></li>
+        <li><span></span><span>Férias proporcionais</span><span></span><span class="num">{{ r.memoria.ferias_proporcionais.meses }}/12</span></li>
+        <li><span></span><span>Férias vencidas</span><span></span><span class="num">{{ r.memoria.ferias_vencidas|length }} período(s){% for v in r.memoria.ferias_vencidas %}{% if v.dobro %} · em dobro{% endif %}{% endfor %}</span></li>
+        <li><span></span><span>Saque do FGTS</span><span></span><span class="num">{{ r.memoria.saque_fgts }}</span></li>
+      </ul>
+    </section>
+    <section class="card">
+      <h2>eSocial</h2>
+      {% for e in eventos %}<p><a href="{% url 'esocial:evento' e.pk %}">{{ e.tipo }} — {{ e.descricao }}</a> <span class="tag {{ e.status }}">{{ e.get_status_display }}</span></p>{% empty %}<p class="muted">O S-2299 ainda não foi gerado (envio automático desligado).</p>{% endfor %}
+      <p class="dica">O pagamento entra no S-1210 do mês em que for feito, ao fechar aquela folha.</p>
+    </section>
+  </div>
+</div>
+{% endblock %}

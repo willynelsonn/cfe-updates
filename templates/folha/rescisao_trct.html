@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}TRCT{% endblock %}
+{% block content %}
+<div class="topo nao-imprimir"><h1>Termo de rescisão</h1><button class="btn primario" onclick="window.print()">{% icone "imprimir" %} Imprimir</button></div>
+<div class="doc">
+  <h2 style="text-align:center;margin-bottom:16px">TERMO DE RESCISÃO DO CONTRATO DE TRABALHO</h2>
+  <p><strong>Empregador:</strong> {{ r.funcionario.empresa.razao_social }} — CNPJ {{ r.funcionario.empresa.nr_insc_formatado }}<br>
+  <strong>Empregado:</strong> {{ r.funcionario.nome }} — CPF {{ r.funcionario.cpf_formatado }} — Matrícula {{ r.funcionario.matricula }}<br>
+  <strong>Cargo:</strong> {{ r.funcionario.cargo.nome }} (CBO {{ r.funcionario.cargo.cbo }}) — <strong>Admissão:</strong> {{ r.funcionario.data_admissao|date:"d/m/Y" }}<br>
+  <strong>Causa:</strong> {{ r.get_motivo_display }}<br>
+  <strong>Aviso prévio:</strong> {{ r.get_tipo_aviso_display }}{% if r.data_aviso %} em {{ r.data_aviso|date:"d/m/Y" }}{% endif %} —
+  <strong>Afastamento:</strong> {{ r.data_desligamento|date:"d/m/Y" }}{% if r.data_projetada != r.data_desligamento %} (projeção {{ r.data_projetada|date:"d/m/Y" }}){% endif %}</p>
+  <table>
+    <tr><th>Cód.</th><th>Verba</th><th class="num">Ref.</th><th class="num">Valor (R$)</th></tr>
+    {% for i in proventos %}<tr><td>{{ i.codigo }}</td><td>{{ i.descricao }}</td><td class="num">{% if i.referencia %}{{ i.referencia|numero:"0" }}{% endif %}</td><td class="num">{{ i.valor|numero }}</td></tr>{% endfor %}
+    <tr><th colspan="3">Total bruto</th><th class="num">{{ r.total_proventos|numero }}</th></tr>
+    {% for i in descontos %}<tr><td>{{ i.codigo }}</td><td>(−) {{ i.descricao }}</td><td class="num">{% if i.referencia %}{{ i.referencia|numero:"0" }}{% endif %}</td><td class="num">{{ i.valor|numero }}</td></tr>{% endfor %}
+    <tr><th colspan="3">Total de descontos</th><th class="num">{{ r.total_descontos|numero }}</th></tr>
+    <tr><th colspan="3">Valor líquido</th><th class="num">{{ r.liquido|numero }}</th></tr>
+  </table>
+  <p class="muted" style="font-size:12px;margin-top:10px">FGTS do mês rescisório R$ {{ r.fgts_rescisorio|numero }} e multa rescisória R$ {{ r.multa_fgts|numero }} recolhidos pela guia do FGTS Digital. Pagamento até {{ r.prazo_pagamento|date:"d/m/Y" }} (CLT art. 477, §6º).</p>
+  <p style="margin-top:46px">____/____/______ &nbsp;&nbsp; _______________________________ Empregador &nbsp;&nbsp; _______________________________ Empregado</p>
+</div>
+{% endblock %}

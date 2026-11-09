@@ -271,8 +271,8 @@ def s2200(funcionario):
     return id_evento, root
 
 
-def s2299(funcionario):
-    """Desligamento (sem verbas rescisórias detalhadas nesta versão)."""
+def s2299(funcionario, rescisao=None):
+    """Desligamento, com as verbas rescisórias (verbasResc) quando a rescisão foi calculada."""
     empresa = funcionario.empresa
     f = funcionario
     id_evento, root, evt = _raiz("S-2299", empresa)
@@ -289,9 +289,32 @@ def s2299(funcionario):
         from folha.calculo import aviso_previo_dias
         from datetime import timedelta
 
-        dias = aviso_previo_dias(f.data_admissao, f.data_desligamento)
-        sub(info, "dtProjFimAPI", f.data_desligamento + timedelta(days=dias))
+        if rescisao is not None and rescisao.data_projetada:
+            sub(info, "dtProjFimAPI", rescisao.data_projetada)
+        else:
+            dias = aviso_previo_dias(f.data_admissao, f.data_desligamento)
+            sub(info, "dtProjFimAPI", f.data_desligamento + timedelta(days=dias))
     sub(info, "pensAlim", 0)
+    if rescisao is not None:
+        from folha.models import Rubrica
+
+        codigos = {r.codigo: r for r in Rubrica.objects.filter(empresa=empresa)}
+        verbas = sub(info, "verbasResc")
+        dm = sub(verbas, "dmDev")
+        sub(dm, "ideDmDev", rescisao.ide_dm_dev)
+        per = sub(dm, "infoPerApur")
+        estab = _ide_estab_lot(per, empresa)
+        for item in rescisao.itens:
+            det = sub(estab, "detVerbas")
+            rub = codigos[item["codigo"]]
+            sub(det, "codRubr", rub.codigo)
+            sub(det, "ideTabRubr", rub.ide_tab_rubr)
+            if item["referencia"]:
+                sub(det, "qtdRubr", Decimal(item["referencia"]))
+            sub(det, "vrRubr", Decimal(item["valor"]))
+            sub(det, "indApurIR", 0)
+        nocivo = sub(estab, "infoAgNocivo")
+        sub(nocivo, "grauExp", 1)
     return id_evento, root
 
 
@@ -342,8 +365,9 @@ def s1210(empresa, per_apur: str, cpf: str, holerites):
     for h in holerites:
         pg = sub(benef, "infoPgto")
         sub(pg, "dtPgto", h.data_pagamento)
-        sub(pg, "tpPgto", 1)  # remuneração informada em S-1200
-        sub(pg, "perRef", h.competencia.per_apur)
+        rescisao = getattr(h, "eh_rescisao", False)
+        sub(pg, "tpPgto", 2 if rescisao else 1)  # 2 = verbas rescisórias do S-2299; 1 = S-1200
+        sub(pg, "perRef", h.per_apur if rescisao else h.competencia.per_apur)
         sub(pg, "ideDmDev", h.ide_dm_dev)
         sub(pg, "vrLiq", max(h.liquido, Decimal("0")))
     return id_evento, root

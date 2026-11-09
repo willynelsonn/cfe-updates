@@ -127,3 +127,46 @@ class FeriasForm(forms.ModelForm):
         self.instance.data_pagamento = self.cleaned_data["data_pagamento"]
         self.instance.data_aviso = self.cleaned_data["data_aviso"]
         return super().save(commit)
+
+
+class RescisaoForm(forms.ModelForm):
+    def __init__(self, *args, empresa=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["funcionario"].queryset = Funcionario.objects.filter(
+            empresa=empresa, data_desligamento__isnull=True
+        ).order_by("nome")
+        self.fields["data_pagamento"].required = False
+        self.fields["data_pagamento"].help_text += " Deixe em branco para usar o último dia do prazo."
+
+    class Meta:
+        from .models import Rescisao
+
+        model = Rescisao
+        fields = ["funcionario", "motivo", "tipo_aviso", "data_aviso", "data_desligamento", "data_pagamento",
+                  "saldo_fgts", "faltas_periodo_ferias"]
+        widgets = {f: DATA for f in ("data_aviso", "data_desligamento", "data_pagamento")}
+
+    def clean(self):
+        dados = super().clean()
+        f, deslig = dados.get("funcionario"), dados.get("data_desligamento")
+        if not f or not deslig:
+            return dados
+        if deslig < f.data_admissao:
+            self.add_error("data_desligamento", "O desligamento não pode ser antes da admissão.")
+        prazo = deslig + timedelta(days=10)
+        if not dados.get("data_pagamento"):
+            dados["data_pagamento"] = prazo
+        elif dados["data_pagamento"] > prazo:
+            self.add_error("data_pagamento", f"O prazo legal é {prazo:%d/%m/%Y} (CLT art. 477, §6º). "
+                                             "Pagar depois gera multa de um salário (art. 477, §8º).")
+        if dados.get("motivo") in {"07", "08"} and dados.get("tipo_aviso") == "indenizado":
+            self.add_error("tipo_aviso", "No pedido de demissão o aviso é do empregado: escolha trabalhado, "
+                                         "dispensado pela empresa ou não cumprido.")
+        if dados.get("motivo") in {"01", "06", "10", "03", "04"} and dados.get("tipo_aviso") not in {"nenhum", None}:
+            dados["tipo_aviso"] = "nenhum"
+        return dados
+
+    def save(self, commit=True):
+        self.instance.data_pagamento = self.cleaned_data["data_pagamento"]
+        self.instance.tipo_aviso = self.cleaned_data["tipo_aviso"]
+        return super().save(commit)
