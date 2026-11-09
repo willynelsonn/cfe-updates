@@ -116,6 +116,21 @@
       g.addEventListener("pointermove", abrir); g.addEventListener("focus", abrir);
       g.addEventListener("pointerleave", fechar); g.addEventListener("blur", fechar);
     });
+    animarColunas(caixa, svg, m.t + ih);
+  }
+
+  // Primeira exibição: as colunas crescem a partir da linha de base (GSAP), uma vez só.
+  function animarColunas(caixa, svg, baseY) {
+    if (caixa.dataset.animado || !window.gsap) return;
+    caixa.dataset.animado = "1";
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var grupos = svg.querySelectorAll("g.marca");
+    var tween = window.gsap.from(grupos, {
+      scaleY: 0, duration: 0.8, ease: "power3.out", stagger: 0.04, paused: true,
+      svgOrigin: function (i, alvo) { var b = alvo.getBBox(); return (b.x + b.width / 2) + " " + baseY; },
+    });
+    if (window.ScrollTrigger) window.ScrollTrigger.create({ trigger: caixa, start: "top bottom", once: true, onEnter: function () { tween.play(); } });
+    else tween.play();
   }
 
   function sparkline(caixa) {
