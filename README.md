@@ -14,23 +14,38 @@ sistema mostra uma prévia dos valores para conferência.
 
 | Área | Funcionalidades |
 |---|---|
-| Empresas | Várias empresas (escritório contábil), CNPJ alfanumérico, Simples/Lucro, RAT/FAP, terceiros, certificado A1 com a senha guardada criptografada |
+| Automação | Admissão, férias e desligamento vão sozinhos para o eSocial ao salvar. Botão **Apurar e enviar** calcula, fecha e transmite a folha. Uma fila respeita a ordem exigida pelo governo (cada evento só sai depois que os que ele precisa foram aceitos) e acompanha os retornos sozinha |
+| Empresas | Várias empresas (escritório contábil), CNPJ alfanumérico, Simples/Lucro, RAT/FAP, terceiros, certificado A1 com senha criptografada, opção "já cadastrada no eSocial por outro sistema" para migrar do Domínio |
 | Funcionários | Cadastro completo para o S-2200, dependentes (IRRF e salário-família), cargos com CBO, desligamento |
-| Folha mensal | Salário proporcional (admissão/desligamento), horas extras 50%/100%, DSR sobre horas extras, adicional noturno, insalubridade, periculosidade, faltas, vale-transporte, lançamentos livres |
-| Impostos 2026 | INSS progressivo (teto R$ 8.475,55), IRRF com desconto simplificado e **redução da Lei 15.270/2025** (isenção até R$ 5.000), salário-família, FGTS 8% (aprendiz 2%) |
-| Relatórios | Holerite para impressão (individual ou em lote), memória de cálculo, totais da folha, custo da empresa, prévia da DCTFWeb e do FGTS |
-| eSocial | S-1000, S-1005, S-1010, S-1020, S-2200, S-1200, S-1210, S-1299 e S-2299; validação nos XSDs oficiais; assinatura digital; envio em lotes; consulta do retorno e dos recibos |
-| DCTFWeb | Opção de transmissão automática da DCTFWeb no fechamento (`transDCTFWeb`) |
+| Folha mensal | Salário proporcional, horas extras 50%/100%, DSR, adicional noturno, insalubridade, periculosidade, faltas, vale-transporte, lançamentos livres |
+| Férias | Programação com conferência da CLT (arts. 130, 134, 135, 137, 143 e 145), período aquisitivo sugerido, médias de variáveis, 1/3, abono pecuniário, INSS e IRRF, divisão do gozo entre meses, aviso e recibo para imprimir e S-2230 |
+| 13º salário | 1ª parcela na folha do mês (natureza 5504, até 30/11), 2ª parcela com INSS e IRRF exclusivos e desconto do adiantamento (5001/9214), S-1200 e S-1299 anuais |
+| Impostos 2026 | INSS progressivo, IRRF com a redução da Lei 15.270/2025, salário-família, FGTS 8% (aprendiz 2%) |
+| Guias | DARF da DCTFWeb e GFD do FGTS Digital com valores estimados e vencimentos; DARF em PDF pela API Integra Contador (SERPRO), quando contratada |
+| Conformidade | Painel de pendências legais com base legal: admissão fora do prazo, salário abaixo do mínimo, jornada, idade, férias vencidas e a vencer, 13º, prazos do eSocial, 5º dia útil, guias vencendo |
+| eSocial | S-1000, S-1005, S-1010, S-1020, S-2200, S-2230, S-2299, S-1200, S-1210 e S-1299, validados nos XSDs oficiais, assinados e transmitidos em lotes |
 
 ## Ainda não faz (próximos passos sugeridos)
 
-1. **Rescisão (TRCT)**: cálculo das verbas rescisórias (saldo, aviso, férias e 13º proporcionais, multa do FGTS) e envio no S-2299. Hoje o S-2299 vai sem verbas.
-2. **Férias** (cálculo, aviso e recibo) e **13º salário** (1ª e 2ª parcelas, S-1200 anual).
-3. **Afastamentos** (S-2230), **alterações contratuais** (S-2205/S-2206) e **SST** (S-2210/S-2220/S-2240).
-4. Pensão alimentícia, consignado (eConsignado), horistas, intermitentes, várias lotações/estabelecimentos.
-5. Leitura dos totalizadores do eSocial (S-5001, S-5002, S-5003, S-5011, S-5013) para conferir automaticamente com a prévia.
-6. Emissão do DARF da DCTFWeb por API (Integra Contador do SERPRO, serviço pago).
-7. Importação de funcionários de outro sistema (por exemplo, do Domínio) via planilha.
+1. **Rescisão (TRCT)**: o S-2299 é enviado, mas as verbas rescisórias ainda precisam ser calculadas fora.
+2. **Retificação** de folha já enviada (S-1200 com `indRetif = 2`) e exclusão de eventos (S-3000).
+3. Afastamentos por doença/maternidade (S-2230 com outros motivos), alterações contratuais (S-2205/S-2206) e SST (S-2210/S-2220/S-2240).
+4. Férias em dobro, férias coletivas, pensão alimentícia, consignado, horistas e intermitentes.
+5. Feriados nacionais e municipais nos prazos (hoje só sábados e domingos são considerados).
+6. Leitura dos totalizadores S-5001/S-5011 para conferir automaticamente com a prévia.
+7. GFD do FGTS Digital emitida pelo sistema: o governo não oferece API pública; hoje o FolhaWeb calcula e leva até o portal.
+
+## Pontos para o contador confirmar antes da produção
+
+Pesquisei a regra vigente, mas estes itens não puderam ser conferidos no texto oficial a partir do ambiente onde o sistema foi feito:
+
+- Rubricas de férias da NT S-1.3 04/2025: adiantamento **1015**, gozo **1016/1017** e compensação **9221**, além das incidências escolhidas para elas (`folha/models.py`, `RUBRICAS_PADRAO`).
+- Abono pecuniário com natureza **1023** e incidência de IRRF **74** (isento).
+- Retenção antecipada do INSS das férias com natureza **9200** (rubrica 9209), quando o gozo é em mês seguinte ao pagamento.
+- A redução da Lei 15.270/2025 aplicada ao **13º** e às **férias** (`redutor_irrf_13` e `redutor_irrf_ferias` em `folha/tabelas.py`).
+- O nome do serviço do Integra Contador para o DARF (`GERARGUIA31`, configurável).
+
+Todas as rubricas podem ser editadas na tela **Rubricas**. Teste tudo primeiro em **produção restrita**.
 
 ## Como rodar
 
@@ -70,6 +85,12 @@ python manage.py runserver
 
 Acesse http://127.0.0.1:8000.
 
+Para o envio continuar mesmo com o navegador fechado, agende a fila no servidor (a cada 5 minutos):
+
+```bash
+*/5 * * * * cd /caminho/do/folhaweb && python manage.py processar_esocial
+```
+
 Testes automáticos:
 
 ```bash
@@ -85,16 +106,14 @@ a `FOLHA_SECRET_KEY`. Se ela mudar, será preciso reenviar o certificado.
 
 ## Roteiro de uso
 
-1. Cadastre a empresa e envie o certificado digital A1 (`.pfx`).
-2. Em **eSocial**, gere os eventos iniciais (S-1000, S-1005, S-1010, S-1020) e transmita. Isso se faz uma vez por empresa.
-3. Cadastre cargos e funcionários. Na ficha de cada um, gere o **S-2200** (até o dia anterior ao início do trabalho).
-4. Em **Competências**, abra o mês, lance horas extras, faltas etc. e clique em **Calcular folha**.
-5. Confira holerites e totais e clique em **Fechar** para gerar S-1200, S-1210 e S-1299.
-6. Em **eSocial**, clique em **Transmitir pendentes** e, alguns minutos depois, em **Consultar retorno**.
-7. Emita o DARF na DCTFWeb (e-CAC) e a guia no FGTS Digital (veja a tela "DCTFWeb e FGTS").
+1. Cadastre a empresa e envie o certificado digital A1 (`.pfx`). Se ela já estiver no eSocial por outro sistema (por exemplo, o Domínio), marque "empresa já cadastrada no eSocial".
+2. Cadastre cargos e funcionários. A admissão vai sozinha para o eSocial. Para quem já foi enviado pelo outro sistema, marque "admissão já enviada".
+3. Todo mês, em **Folha do mês**, lance horas extras e faltas e clique em **Apurar e enviar**.
+4. Quando o eSocial aceitar o fechamento, clique em **Gerar guias** e pague o DARF e a GFD até o dia 20.
+5. Férias: **Programar férias** (o sistema bloqueia o que a CLT não permite). 13º: informe a 1ª parcela na folha de novembro e apure a 2ª parcela em **13º salário** até 20/12.
+6. Resolva o que aparecer em **Pendências legais**, na tela inicial.
 
-Comece com o ambiente **Produção restrita** (o padrão). Mude para **Produção** no cadastro da
-empresa só depois de validar.
+O ambiente padrão é a **produção restrita** (testes). Mude para **Produção** no cadastro da empresa só depois de validar.
 
 ## Estrutura
 
@@ -129,8 +148,10 @@ rendimento tributável bruto do mês.
   `esocial/assinatura.py` porque o libxml2 2.14 gera `xmlns=""` indevido ao canonicalizar o
   `<SignedInfo>`, o que invalidaria a assinatura. Os testes conferem a assinatura com um
   verificador independente, baseado na biblioteca padrão do Python.
-- **S-1210** fica no período do **pagamento**, e não no da competência: o salário de outubro pago
-  em 05/11 gera S-1210 em 2026-11. O S-1299 de outubro sai com `evtPgtos = N`.
+- **S-1210** segue o regime de caixa: fica no mês do **pagamento**. O salário de outubro pago em 05/11
+  entra no S-1210 de novembro, junto com as férias e a 1ª parcela do 13º pagas em novembro. Por isso a
+  folha de um mês só fecha depois das folhas cujos pagamentos caem nele.
+- **INSS das férias**: retido no recibo e acertado na folha do mês do gozo, para o líquido nunca ficar negativo.
 - O TLS dos servidores do eSocial usa a cadeia ICP-Brasil. Se o servidor não a reconhecer, aponte
   `FOLHA_ESOCIAL_CA_BUNDLE` para um `.pem` com as ACs da ICP-Brasil.
 - Os XSDs em `esocial/schemas/` são os publicados pelo governo, obtidos do projeto

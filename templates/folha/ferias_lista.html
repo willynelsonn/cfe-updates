@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Férias{% endblock %}
+{% block content %}
+<div class="topo"><h1>Férias</h1><a class="btn primario" href="{% url 'folha:ferias_nova' %}" title="Programa e calcula férias de um funcionário">Programar férias</a></div>
+<p class="muted">As férias vencidas ou a vencer aparecem nas pendências da tela inicial. Cada programação gera o aviso, o recibo e o evento S-2230 no eSocial.</p>
+<div class="tabela"><table>
+  <thead><tr><th>Funcionário</th><th>Gozo</th><th class="num">Dias</th><th class="num">Vendidos</th><th>Pagar até</th><th class="num">Líquido</th><th>Situação</th></tr></thead>
+  <tbody>{% for fe in object_list %}
+    <tr><td><a href="{% url 'folha:ferias_detalhe' fe.pk %}">{{ fe.funcionario.nome }}</a></td><td>{{ fe.inicio|date:"d/m/Y" }} a {{ fe.fim|date:"d/m/Y" }}</td>
+    <td class="num">{{ fe.dias }}</td><td class="num">{{ fe.dias_abono }}</td><td>{{ fe.data_pagamento|date:"d/m/Y" }}</td>
+    <td class="num">{{ fe.liquido|floatformat:"2g" }}</td><td><span class="tag {% if fe.status == 'calculada' %}aceito{% endif %}">{{ fe.get_status_display }}</span></td></tr>
+  {% empty %}<tr><td colspan="7" class="muted">Nenhuma férias programada.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

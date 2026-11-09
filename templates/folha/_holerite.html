@@ -1,7 +1,7 @@
 <div class="holerite">
   <div class="cab">
     <div><strong>{{ h.competencia.empresa.razao_social }}</strong><br>CNPJ {{ h.competencia.empresa.nr_insc_formatado }}</div>
-    <div class="direita"><strong>Recibo de pagamento de salário</strong><br>Competência {{ h.competencia }}</div>
+    <div class="direita"><strong>{% if h.tipo == "folha" %}Recibo de pagamento de salário{% else %}{{ h.get_tipo_display }}{% endif %}</strong><br>Competência {{ h.competencia }} · pago em {{ h.data_pagamento|date:"d/m/Y" }}</div>
   </div>
   <p>{{ h.funcionario.matricula }} — <strong>{{ h.funcionario.nome }}</strong> · CPF {{ h.funcionario.cpf_formatado }}<br>
   {{ h.funcionario.cargo.nome }} (CBO {{ h.funcionario.cargo.cbo }}) · Admissão {{ h.funcionario.data_admissao|date:"d/m/Y" }}</p>

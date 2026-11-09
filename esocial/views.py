@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
@@ -12,12 +12,13 @@ from .assinatura import ErroCertificado
 from .models import Evento, Lote
 from .servico import (
     ErroESocial,
-    consultar_lotes_enviados,
     gerar_admissao,
     gerar_desligamento,
-    gerar_eventos_iniciais,
+    processar_fila,
     reenviar,
-    transmitir_pendentes,
+    regerar,
+    situacao_fila,
+    sincronizar_tabelas,
 )
 
 
@@ -29,7 +30,7 @@ class EventoListView(EmpresaRequiredMixin, ListView):
     def get_queryset(self):
         qs = super().get_queryset().select_related("funcionario", "lote")
         if status := self.request.GET.get("status"):
-            qs = qs.filter(status=status)
+            qs = qs.filter(status__in=["erro", "rejeitado"]) if status == "rejeitado" else qs.filter(status=status)
         if tipo := self.request.GET.get("tipo"):
             qs = qs.filter(tipo=tipo)
         return qs
@@ -37,8 +38,7 @@ class EventoListView(EmpresaRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["status_choices"] = Evento.STATUS
-        ctx["pendentes"] = Evento.objects.filter(empresa=self.empresa, status="pendente").count()
-        ctx["aguardando"] = Lote.objects.filter(empresa=self.empresa, status="enviado").count()
+        ctx["fila"] = situacao_fila(self.empresa)
         return ctx
 
 
@@ -74,8 +74,9 @@ def _executar(request, acao, sucesso):
 @login_required
 @require_POST
 def gerar_iniciais(request):
-    eventos = _executar(request, lambda: gerar_eventos_iniciais(request.empresa),
-                        lambda evs: f"{len(evs)} eventos iniciais gerados (S-1000, S-1005, S-1020 e S-1010).")
+    eventos = _executar(request, lambda: sincronizar_tabelas(request.empresa),
+                        lambda evs: f"{len(evs)} evento(s) de cadastro da empresa e rubricas na fila."
+                        if evs else "Os cadastros da empresa e das rubricas já estão no eSocial (ou na fila).")
     if eventos and any(e.status == "erro" for e in eventos):
         messages.error(request, "Há eventos com erro de validação: confira a lista.")
     return redirect("esocial:eventos")
@@ -85,9 +86,9 @@ def gerar_iniciais(request):
 @require_POST
 def admissao(request, pk):
     func = get_object_or_404(Funcionario, pk=pk, empresa=request.empresa)
-    ev = _executar(request, lambda: gerar_admissao(func), lambda e: f"S-2200 de {func.nome} gerado.")
+    ev = _executar(request, lambda: gerar_admissao(func), lambda e: f"Admissão de {func.nome} na fila do eSocial.")
     if ev and ev.status == "erro":
-        messages.error(request, "O S-2200 tem erros de validação: " + "; ".join(ev.mensagens))
+        messages.error(request, "A admissão tem erros de validação: " + "; ".join(ev.mensagens))
     return redirect("pessoal:detalhe", pk=pk)
 
 
@@ -95,29 +96,39 @@ def admissao(request, pk):
 @require_POST
 def desligamento(request, pk):
     func = get_object_or_404(Funcionario, pk=pk, empresa=request.empresa)
-    ev = _executar(request, lambda: gerar_desligamento(func), lambda e: f"S-2299 de {func.nome} gerado.")
+    ev = _executar(request, lambda: gerar_desligamento(func),
+                   lambda e: f"Desligamento de {func.nome} na fila do eSocial.")
     if ev and ev.status == "erro":
-        messages.error(request, "O S-2299 tem erros de validação: " + "; ".join(ev.mensagens))
+        messages.error(request, "O desligamento tem erros de validação: " + "; ".join(ev.mensagens))
     return redirect("pessoal:detalhe", pk=pk)
 
 
 @login_required
 @require_POST
 def transmitir(request):
-    lotes = _executar(request, lambda: transmitir_pendentes(request.empresa),
-                      lambda ls: f"{len(ls)} lote(s) transmitido(s). Aguarde alguns minutos e clique em Consultar.")
-    for lote in lotes or []:
-        if lote.status in {"erro", "rejeitado"}:
-            messages.error(request, f"Lote {lote.pk}: {lote.cd_resposta} {lote.desc_resposta}")
-    return redirect("esocial:eventos")
+    _executar(request, lambda: processar_fila(request.empresa),
+              lambda r: f"{r['lotes_enviados']} lote(s) enviado(s), {r['consultados']} retorno(s) consultado(s). "
+                        f"Na fila: {r['pendentes']} · aguardando governo: {r['enviados']}.")
+    return redirect(request.POST.get("next") or "esocial:eventos")
+
+
+consultar = transmitir  # o mesmo passo consulta retornos e envia o que ficou liberado
 
 
 @login_required
 @require_POST
-def consultar(request):
-    _executar(request, lambda: consultar_lotes_enviados(request.empresa),
-              lambda ls: f"{len(ls)} lote(s) consultado(s).")
-    return redirect("esocial:eventos")
+def processar_json(request):
+    """Chamado pela tela a cada poucos segundos enquanto houver algo em andamento."""
+    try:
+        resultado = processar_fila(request.empresa)
+    except (ErroESocial, ErroCertificado) as exc:
+        return JsonResponse({"erro": str(exc), **situacao_fila(request.empresa)}, status=200)
+    return JsonResponse(resultado)
+
+
+@login_required
+def situacao_json(request):
+    return JsonResponse(situacao_fila(request.empresa) if request.empresa else {})
 
 
 @login_required
@@ -125,8 +136,16 @@ def consultar(request):
 def reenviar_evento(request, pk):
     ev = get_object_or_404(Evento, pk=pk, empresa=request.empresa)
     reenviar(ev)
-    messages.success(request, "Evento voltou para a fila de envio.")
+    messages.success(request, "Evento voltou para a fila de envio sem alterações.")
     return redirect("esocial:evento", pk=pk)
+
+
+@login_required
+@require_POST
+def regerar_evento(request, pk):
+    ev = get_object_or_404(Evento, pk=pk, empresa=request.empresa)
+    novo = _executar(request, lambda: regerar(ev), lambda e: "Evento gerado de novo com os dados atuais do cadastro.")
+    return redirect("esocial:evento", pk=novo.pk) if novo else redirect("esocial:evento", pk=pk)
 
 
 @login_required

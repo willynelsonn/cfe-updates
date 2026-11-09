@@ -10,8 +10,11 @@ from esocial import xml_eventos as xe
 from esocial.assinatura import ErroCertificado, assinar, carregar_pfx
 from esocial.models import Evento, Lote
 from esocial.servico import (
+    ErroESocial,
     consultar_lotes_enviados,
     fechar_competencia,
+    gerar_ferias,
+    processar_fila,
     gerar_admissao,
     gerar_desligamento,
     gerar_eventos_iniciais,
@@ -25,8 +28,8 @@ from esocial.webservice import (
     ler_retorno_envio,
     montar_lote,
 )
-from folha.models import Lancamento, Rubrica
-from folha.servico import calcular_competencia
+from folha.models import Competencia, Ferias, Lancamento, Rubrica
+from folha.servico import calcular_competencia, calcular_ferias
 from folha.tests import fabrica
 
 from .certificado_teste import gerar_pfx, verificar_assinatura
@@ -69,21 +72,75 @@ class GeracaoEventosTest(TestCase):
         _sem_erros(self, [ev])
         self.assertIn("<dtProjFimAPI>2026-11-22</dtProjFimAPI>", ev.xml)  # 33 dias de aviso
 
-    def test_fechamento_folha(self):
-        comp = fabrica.competencia(self.emp)
+    def test_fechamento_folha_regime_de_caixa(self):
+        # Outubro: salário pago em 05/11 -> S-1210 só no fechamento de novembro.
+        out = fabrica.competencia(self.emp)
         he = Rubrica.objects.get(empresa=self.emp, papel="he50")
-        Lancamento.objects.create(competencia=comp, funcionario=self.func, rubrica=he, quantidade=D("5"))
-        calcular_competencia(comp)
-        eventos = fechar_competencia(comp, transmitir_dctfweb=True)
+        Lancamento.objects.create(competencia=out, funcionario=self.func, rubrica=he, quantidade=D("5"))
+        calcular_competencia(out)
+        eventos = fechar_competencia(out, transmitir_dctfweb=True)
+        _sem_erros(self, eventos)
+        self.assertEqual([e.tipo for e in eventos], ["S-1200", "S-1299"])
+        self.assertIn("<evtPgtos>N</evtPgtos>", eventos[-1].xml)
+        self.assertIn("<transDCTFWeb>S</transDCTFWeb>", eventos[-1].xml)
+        self.assertIn("S-2200:func:", " ".join(eventos[0].depende))
+        self.assertIn("S-1010:1010", eventos[0].depende)
+        out.refresh_from_db()
+        self.assertEqual(out.status, "fechada")
+
+        nov = fabrica.competencia(self.emp, mes=11, data_pagamento=date(2026, 12, 4),
+                                  data_adiantamento_13=date(2026, 11, 27))
+        calcular_competencia(nov)
+        eventos = fechar_competencia(nov)
         _sem_erros(self, eventos)
         self.assertEqual([e.tipo for e in eventos], ["S-1200", "S-1210", "S-1299"])
-        s1210 = eventos[1]
-        self.assertEqual(s1210.per_apur, "2026-11")  # mês do pagamento, não da competência
-        s1299 = eventos[2]
-        self.assertIn("<evtPgtos>N</evtPgtos>", s1299.xml)
-        self.assertIn("<transDCTFWeb>S</transDCTFWeb>", s1299.xml)
-        comp.refresh_from_db()
-        self.assertEqual(comp.status, "fechada")
+        s1200, s1210, s1299 = eventos
+        self.assertEqual(s1200.xml.count("<dmDev>"), 2)  # folha + 1ª parcela do 13º
+        self.assertIn("<codRubr>5504</codRubr>", s1200.xml)
+        self.assertEqual(s1210.per_apur, "2026-11")
+        self.assertIn("<perRef>2026-10</perRef>", s1210.xml)  # salário de outubro
+        self.assertIn("<perRef>2026-11</perRef>", s1210.xml)  # adiantamento do 13º
+        self.assertIn("<evtPgtos>S</evtPgtos>", s1299.xml)
+        self.assertEqual(sorted(s1210.depende), sorted([
+            f"S-1200:2026-10:func:{self.func.pk}", f"S-1200:2026-11:func:{self.func.pk}"]))
+
+    def test_nao_fecha_com_pagamentos_de_folha_aberta(self):
+        out = fabrica.competencia(self.emp)
+        calcular_competencia(out)  # calculada, não fechada
+        nov = fabrica.competencia(self.emp, mes=11, data_pagamento=date(2026, 12, 4))
+        calcular_competencia(nov)
+        with self.assertRaisesMessage(ErroESocial, "Feche essas folhas primeiro"):
+            fechar_competencia(nov)
+
+    def test_decimo_terceiro_anual(self):
+        fabrica.funcionario(self.emp, matricula="0009", nome="Gerente", cpf="111.444.777-35", salario=D("9000"))
+        nov = fabrica.competencia(self.emp, mes=11, data_pagamento=date(2026, 12, 4),
+                                  data_adiantamento_13=date(2026, 11, 27))
+        calcular_competencia(nov)
+        dt = Competencia.objects.create(empresa=self.emp, tipo="13", ano=2026, mes=12,
+                                        data_pagamento=date(2026, 12, 18))
+        calcular_competencia(dt)
+        eventos = fechar_competencia(dt)
+        _sem_erros(self, eventos)
+        self.assertEqual([e.tipo for e in eventos], ["S-1200", "S-1200", "S-1299"])
+        maria = next(e for e in eventos if e.funcionario == self.func)
+        self.assertIn("<indApuracao>2</indApuracao>", maria.xml)
+        self.assertIn("<perApur>2026</perApur>", maria.xml)
+        for cod in ("5001", "9214", "9202"):
+            self.assertIn(f"<codRubr>{cod}</codRubr>", maria.xml)
+        self.assertNotIn("<codRubr>9205</codRubr>", maria.xml)  # 13º de R$ 3.000: isento em 2026
+        gerente = next(e for e in eventos if e.tipo == "S-1200" and e.funcionario != self.func)
+        self.assertIn("<codRubr>9205</codRubr>", gerente.xml)
+
+    def test_ferias_s2230(self):
+        fe = Ferias.objects.create(
+            funcionario=self.func, aquisitivo_inicio=date(2025, 3, 1), aquisitivo_fim=date(2026, 2, 28),
+            inicio=date(2026, 11, 3), dias=30, data_pagamento=date(2026, 10, 30), data_aviso=date(2026, 10, 1))
+        calcular_ferias(fe)
+        ev = gerar_ferias(fe)
+        _sem_erros(self, [ev])
+        self.assertIn("<codMotAfast>15</codMotAfast>", ev.xml)
+        self.assertIn("<dtTermAfast>2026-12-02</dtTermAfast>", ev.xml)
 
     def test_id_do_evento(self):
         id_evento = xe.gerar_id(self.emp)
@@ -136,6 +193,14 @@ RETORNO_ENVIO = b"""<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelop
 <protocoloEnvio>1.2.202611.0000000000000000001</protocoloEnvio></dadosRecepcaoLote>
 </retornoEnvioLoteEventos></eSocial></EnviarLoteEventosResult></EnviarLoteEventosResponse></s:Body></s:Envelope>"""
 
+RETORNO_CONSULTA_UM = """<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>
+<ConsultarLoteEventosResponse><ConsultarLoteEventosResult><eSocial xmlns="http://www.esocial.gov.br/schema/lote/eventos/envio/retornoProcessamento/v1_3_0">
+<retornoProcessamentoLoteEventos><status><cdResposta>201</cdResposta><descResposta>Lote processado com sucesso.</descResposta></status>
+<retornoEventos><evento Id="{ok}"><retornoEvento><eSocial xmlns="http://www.esocial.gov.br/schema/evt/retornoEvento/v1_2_1"><retornoEvento>
+<processamento><cdResposta>201</cdResposta><descResposta>Sucesso.</descResposta></processamento>
+<recibo><nrRecibo>1.1.0000000000000000001</nrRecibo></recibo></retornoEvento></eSocial></retornoEvento></evento>
+</retornoEventos></retornoProcessamentoLoteEventos></eSocial></ConsultarLoteEventosResult></ConsultarLoteEventosResponse></s:Body></s:Envelope>"""
+
 RETORNO_CONSULTA = """<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>
 <ConsultarLoteEventosResponse><ConsultarLoteEventosResult><eSocial xmlns="http://www.esocial.gov.br/schema/lote/eventos/envio/retornoProcessamento/v1_3_0">
 <retornoProcessamentoLoteEventos><status><cdResposta>201</cdResposta><descResposta>Lote processado com sucesso.</descResposta></status>
@@ -160,25 +225,44 @@ class TransmissaoTest(TestCase):
         self.emp.definir_senha_certificado("1234")
         self.emp.save()
 
-    def test_envia_e_consulta(self):
-        eventos = gerar_eventos_iniciais(self.emp)[:2]
+    def test_fila_respeita_dependencias(self):
+        eventos = gerar_eventos_iniciais(self.emp)[:2]  # S-1000 e S-1005
         Evento.objects.exclude(pk__in=[e.pk for e in eventos]).delete()
+        s1000, s1005 = eventos
         with mock.patch("esocial.webservice._post", return_value=RETORNO_ENVIO) as post:
             lotes = transmitir_pendentes(self.emp)
         self.assertEqual(len(lotes), 1)
         self.assertEqual(lotes[0].protocolo, "1.2.202611.0000000000000000001")
         enviado = post.call_args.args[2]
         self.assertIn(b"<Signature", enviado)
-        self.assertEqual(Evento.objects.filter(status="enviado").count(), 2)
+        self.assertIn(s1000.id_evento.encode(), enviado)
+        self.assertNotIn(s1005.id_evento.encode(), enviado)  # espera o S-1000 ser aceito
+        s1005.refresh_from_db()
+        self.assertEqual(s1005.status, "pendente")
+        self.assertIn("Aguardando aceite de: S-1000", s1005.mensagens[0])
 
-        resposta = RETORNO_CONSULTA.format(ok=eventos[0].id_evento, erro=eventos[1].id_evento).encode()
+        # Governo aceita o S-1000; o próximo passo da fila envia o S-1005 sozinho.
+        consulta = RETORNO_CONSULTA_UM.format(ok=s1000.id_evento).encode()
+        with mock.patch("esocial.webservice._post", side_effect=[consulta, RETORNO_ENVIO]) as post:
+            resultado = processar_fila(self.emp)
+        self.assertEqual(resultado["lotes_enviados"], 1)
+        s1000.refresh_from_db()
+        s1005.refresh_from_db()
+        self.assertEqual(s1000.status, "aceito")
+        self.assertEqual(s1000.recibo, "1.1.0000000000000000001")
+        self.assertEqual(s1005.status, "enviado")
+
+    def test_rejeicao(self):
+        ev = gerar_eventos_iniciais(self.emp)[0]
+        Evento.objects.exclude(pk=ev.pk).delete()
+        with mock.patch("esocial.webservice._post", return_value=RETORNO_ENVIO):
+            transmitir_pendentes(self.emp)
+        resposta = RETORNO_CONSULTA.format(ok="OUTRO", erro=ev.id_evento).encode()
         with mock.patch("esocial.webservice._post", return_value=resposta):
             consultar_lotes_enviados(self.emp)
-        ok, erro = Evento.objects.get(pk=eventos[0].pk), Evento.objects.get(pk=eventos[1].pk)
-        self.assertEqual(ok.status, "aceito")
-        self.assertEqual(ok.recibo, "1.1.0000000000000000001")
-        self.assertEqual(erro.status, "rejeitado")
-        self.assertIn("[1030] CPF inexistente. (cpfTrab)", erro.mensagens)
+        ev.refresh_from_db()
+        self.assertEqual(ev.status, "rejeitado")
+        self.assertIn("[1030] CPF inexistente. (cpfTrab)", ev.mensagens)
         self.assertEqual(Lote.objects.get().status, "processado")
 
     def test_leitura_retornos(self):

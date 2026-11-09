@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}13º salário{% endblock %}
+{% block content %}
+<div class="topo"><h1>13º salário de {{ ano|stringformat:"d" }}</h1></div>
+<div class="explica">
+  <p><strong>Como funciona</strong></p>
+  <ol>
+    <li><strong>1ª parcela (adiantamento)</strong>: metade do valor, sem descontos, paga entre fevereiro e <strong>30 de novembro</strong>. No FolhaWeb, informe a data na folha do mês em que vai pagar (normalmente novembro) — ela é calculada junto e vai ao eSocial no mesmo S-1200 do mês (natureza 5504).</li>
+    <li><strong>2ª parcela</strong>: paga até <strong>20 de dezembro</strong>, com desconto do INSS e do IRRF calculados só sobre o 13º e abatendo o adiantamento. Vai ao eSocial num S-1200 anual (período {{ ano|stringformat:"d" }}) com o fechamento anual (S-1299).</li>
+    <li>Contam os meses com 15 dias ou mais de trabalho (1/12 por mês). Horas extras e adicional noturno do ano entram pela média.</li>
+  </ol>
+  <p class="muted">Base legal: Lei 4.090/1962, Lei 4.749/1965, Decreto 57.155/1965.</p>
+</div>
+<div class="acoes-grid">
+  <div class="acao destaque">
+    <h3>Abrir a 2ª parcela de {{ ano|stringformat:"d" }}</h3>
+    <p>Cria a apuração do 13º com pagamento em 20/12 (ou no dia útil anterior). Depois é só clicar em “Apurar e enviar”.</p>
+    <form method="post">{% csrf_token %}<button class="btn primario">Abrir 13º de {{ ano|stringformat:"d" }}</button></form>
+  </div>
+  <div class="acao">
+    <h3>Pagar a 1ª parcela</h3>
+    <p>Abra (ou edite) a folha de novembro e preencha “pagar a 1ª parcela do 13º em”.</p>
+    <a class="btn" href="{% url 'folha:competencias' %}">Ir para as folhas</a>
+  </div>
+</div>
+{% endblock %}

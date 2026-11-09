@@ -11,7 +11,8 @@ class EmpresaForm(forms.ModelForm):
         fields = [
             "razao_social", "nome_fantasia", "tp_insc", "nr_insc", "class_trib", "simples_anexo_iv", "cnae",
             "fpas", "cod_terceiros", "aliq_terceiros", "aliq_rat", "fap", "cnpj_sindicato", "inicio_esocial",
-            "municipio", "uf", "dia_pagamento", "ambiente_esocial", "transmissor_cnpj",
+            "municipio", "uf", "dia_pagamento", "ambiente_esocial", "transmissor_cnpj", "envio_automatico",
+            "esocial_ja_iniciado",
         ]
 
 

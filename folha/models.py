@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import models
@@ -26,6 +26,23 @@ class Rubrica(models.Model):
         ("inss", "INSS do empregado"),
         ("irrf", "IRRF"),
         ("vale_transporte", "Vale-transporte"),
+        # Férias
+        ("ferias", "Férias gozadas (pagas no mês)"),
+        ("ferias_terco", "1/3 de férias (pago no mês)"),
+        ("ferias_ant", "Férias gozadas (pagas em mês anterior)"),
+        ("ferias_terco_ant", "1/3 de férias (pago em mês anterior)"),
+        ("ferias_adiant", "Adiantamento de férias (gozo em mês seguinte)"),
+        ("ferias_abono", "Abono pecuniário de férias (com 1/3)"),
+        ("ferias_comp", "Compensação do adiantamento de férias"),
+        ("irrf_ferias", "IRRF sobre férias"),
+        ("inss_ferias", "INSS sobre férias (gozo no mês do pagamento)"),
+        ("inss_ferias_ant", "Retenção antecipada do INSS das férias (gozo em mês seguinte)"),
+        # 13º salário
+        ("adiant13", "Adiantamento do 13º (1ª parcela)"),
+        ("dec13", "13º salário"),
+        ("desc_adiant13", "Desconto do adiantamento do 13º"),
+        ("inss13", "INSS sobre 13º"),
+        ("irrf13", "IRRF sobre 13º"),
     ]
     INC_CP = [
         ("00", "00 - Não é base de cálculo"),
@@ -43,8 +60,10 @@ class Rubrica(models.Model):
         ("13", "13 - Férias"),
         ("31", "31 - Retenção IRRF mensal"),
         ("32", "32 - Retenção IRRF 13º salário"),
+        ("33", "33 - Retenção IRRF férias"),
         ("41", "41 - Dedução: previdência oficial mensal"),
         ("42", "42 - Dedução: previdência oficial 13º"),
+        ("74", "74 - Isento: abono pecuniário"),
     ]
     INC_FGTS = [("00", "00 - Não é base"), ("11", "11 - Base mensal"), ("12", "12 - Base 13º salário")]
 
@@ -71,7 +90,8 @@ class Rubrica(models.Model):
 
     @property
     def ide_tab_rubr(self):
-        return "FOLHA"
+        # Tabela própria, para não colidir com rubricas de outro sistema (ex.: Domínio) no eSocial.
+        return "FOLHAWEB"
 
     @property
     def provento(self):
@@ -85,8 +105,9 @@ class Rubrica(models.Model):
         return {1: 1, 2: -1}.get(self.tipo, 0)
 
 
-# Rubricas criadas automaticamente para cada empresa nova.
+# Rubricas criadas automaticamente para cada empresa.
 # (código, descrição, tipo, natRubr, incCP, incIRRF, incFGTS, papel)
+# Naturezas de férias conforme NT S-1.3 04/2025 (1015/1016/1017/9221, vigentes desde 01/2026).
 RUBRICAS_PADRAO = [
     ("1000", "Salário-base", 1, "1000", "11", "11", "11", "salario"),
     ("1010", "Horas extras 50%", 1, "1003", "11", "11", "11", "he50"),
@@ -96,55 +117,93 @@ RUBRICAS_PADRAO = [
     ("1040", "Adicional de insalubridade", 1, "1202", "11", "11", "11", "insalubridade"),
     ("1041", "Adicional de periculosidade", 1, "1203", "11", "11", "11", "periculosidade"),
     ("1099", "Outros proventos", 1, "1099", "11", "11", "11", ""),
+    ("1100", "Férias", 1, "1016", "11", "13", "11", "ferias"),
+    ("1101", "1/3 constitucional de férias", 1, "1017", "11", "13", "11", "ferias_terco"),
+    ("1102", "Férias (pagas no mês anterior)", 1, "1016", "11", "9", "11", "ferias_ant"),
+    ("1103", "1/3 de férias (pago no mês anterior)", 1, "1017", "11", "9", "11", "ferias_terco_ant"),
+    ("1104", "Adiantamento de férias (com 1/3)", 1, "1015", "00", "13", "00", "ferias_adiant"),
+    ("1105", "Abono pecuniário de férias (com 1/3)", 1, "1023", "00", "74", "00", "ferias_abono"),
     ("1409", "Salário-família", 1, "1409", "51", "9", "00", "salario_familia"),
+    ("5001", "13º salário", 1, "5001", "12", "12", "12", "dec13"),
+    ("5504", "Adiantamento do 13º salário", 1, "5504", "00", "9", "12", "adiant13"),
     ("9201", "INSS", 2, "9201", "31", "41", "00", "inss"),
+    ("9202", "INSS sobre 13º salário", 2, "9201", "32", "42", "00", "inss13"),
     ("9203", "IRRF", 2, "9203", "00", "31", "00", "irrf"),
+    ("9204", "IRRF sobre férias", 2, "9203", "00", "33", "00", "irrf_ferias"),
+    ("9206", "INSS sobre férias", 2, "9201", "31", "41", "00", "inss_ferias"),
+    ("9209", "Retenção antecipada do INSS das férias", 2, "9200", "00", "9", "00", "inss_ferias_ant"),
+    ("9205", "IRRF sobre 13º salário", 2, "9203", "00", "32", "00", "irrf13"),
     ("9207", "Faltas", 2, "9207", "11", "11", "11", "faltas"),
     ("9208", "DSR sobre faltas", 2, "9207", "11", "11", "11", "dsr_faltas"),
+    ("9214", "Desconto do adiantamento do 13º", 2, "9214", "00", "9", "12", "desc_adiant13"),
     ("9216", "Vale-transporte", 2, "9216", "00", "9", "00", "vale_transporte"),
+    ("9221", "Compensação do adiantamento de férias", 2, "9221", "00", "9", "00", "ferias_comp"),
     ("9200", "Adiantamento salarial", 2, "9200", "00", "9", "00", ""),
 ]
 
 
 def criar_rubricas_padrao(empresa: Empresa):
-    for codigo, desc, tipo, nat, cp, ir, fg, papel in RUBRICAS_PADRAO:
-        Rubrica.objects.get_or_create(
-            empresa=empresa,
-            codigo=codigo,
-            defaults=dict(
-                descricao=desc, tipo=tipo, natureza=nat, inc_cp=cp, inc_irrf=ir, inc_fgts=fg, papel=papel
-            ),
-        )
+    existentes = set(Rubrica.objects.filter(empresa=empresa).values_list("codigo", flat=True))
+    novas = [
+        Rubrica(empresa=empresa, codigo=codigo, descricao=desc, tipo=tipo, natureza=nat,
+                inc_cp=cp, inc_irrf=ir, inc_fgts=fg, papel=papel)
+        for codigo, desc, tipo, nat, cp, ir, fg, papel in RUBRICAS_PADRAO
+        if codigo not in existentes
+    ]
+    if novas:
+        Rubrica.objects.bulk_create(novas)
 
 
 class Competencia(models.Model):
     STATUS = [("aberta", "Aberta"), ("calculada", "Calculada"), ("fechada", "Fechada")]
+    TIPO = [("mensal", "Folha mensal"), ("13", "13º salário (2ª parcela)")]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="competencias")
+    tipo = models.CharField(max_length=6, choices=TIPO, default="mensal")
     ano = models.PositiveSmallIntegerField()
-    mes = models.PositiveSmallIntegerField("mês")
+    mes = models.PositiveSmallIntegerField("mês", help_text="Para o 13º salário use 12.")
     feriados = models.PositiveSmallIntegerField(
         "feriados em dias úteis", default=0, help_text="Usado no cálculo do DSR sobre horas extras."
     )
-    data_pagamento = models.DateField("data de pagamento")
+    data_pagamento = models.DateField(
+        "data de pagamento", help_text="Salário: até o 5º dia útil do mês seguinte. 13º: até 20/12."
+    )
+    data_adiantamento_13 = models.DateField(
+        "pagar a 1ª parcela do 13º em", null=True, blank=True,
+        help_text="Preencha (até 30/11) para calcular o adiantamento do 13º junto com esta folha.",
+    )
     status = models.CharField(max_length=10, choices=STATUS, default="aberta")
     calculada_em = models.DateTimeField(null=True, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-ano", "-mes"]
-        constraints = [models.UniqueConstraint(fields=["empresa", "ano", "mes"], name="competencia_unica")]
+        ordering = ["-ano", "-mes", "tipo"]
+        constraints = [models.UniqueConstraint(fields=["empresa", "tipo", "ano", "mes"], name="competencia_unica")]
 
     def __str__(self):
-        return f"{self.mes:02d}/{self.ano}"
+        return f"13º/{self.ano}" if self.tipo == "13" else f"{self.mes:02d}/{self.ano}"
+
+    @property
+    def decimo_terceiro(self):
+        return self.tipo == "13"
 
     @property
     def per_apur(self):
-        return f"{self.ano}-{self.mes:02d}"
+        """Período de apuração no eSocial: AAAA-MM (mensal) ou AAAA (13º salário)."""
+        return str(self.ano) if self.decimo_terceiro else f"{self.ano}-{self.mes:02d}"
+
+    @property
+    def ind_apuracao(self):
+        return 2 if self.decimo_terceiro else 1
 
     @property
     def inicio(self):
         return date(self.ano, self.mes, 1)
+
+    @property
+    def fim(self):
+        proximo = date(self.ano + (self.mes == 12), self.mes % 12 + 1, 1)
+        return proximo - timedelta(days=1)
 
     @property
     def editavel(self):
@@ -176,9 +235,87 @@ class Lancamento(models.Model):
         return f"{self.funcionario} - {self.rubrica}"
 
 
+class Ferias(models.Model):
+    """Programação e recibo de férias (CLT arts. 129 a 145)."""
+
+    STATUS = [("programada", "Programada"), ("calculada", "Calculada"), ("cancelada", "Cancelada")]
+
+    funcionario = models.ForeignKey(
+        Funcionario, on_delete=models.CASCADE, related_name="ferias", verbose_name="funcionário"
+    )
+    aquisitivo_inicio = models.DateField("início do período aquisitivo")
+    aquisitivo_fim = models.DateField("fim do período aquisitivo")
+    faltas_injustificadas = models.PositiveSmallIntegerField(
+        "faltas injustificadas no período aquisitivo", default=0,
+        help_text="Reduzem os dias de direito (CLT art. 130): até 5 → 30 dias; 6-14 → 24; 15-23 → 18; 24-32 → 12.",
+    )
+    inicio = models.DateField("início do gozo")
+    dias = models.PositiveSmallIntegerField("dias de gozo")
+    dias_abono = models.PositiveSmallIntegerField(
+        "dias vendidos (abono pecuniário)", default=0,
+        help_text="Até 1/3 dos dias de direito (CLT art. 143). Deve ser pedido pelo empregado.",
+    )
+    data_pagamento = models.DateField(
+        "data do pagamento", help_text="Até 2 dias antes do início do gozo (CLT art. 145)."
+    )
+    data_aviso = models.DateField("data do aviso de férias", help_text="Ao menos 30 dias antes (CLT art. 135).")
+    status = models.CharField(max_length=12, choices=STATUS, default="programada")
+
+    # Valores calculados
+    remuneracao_base = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    media_variaveis = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    valor_ferias = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    valor_terco = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    valor_abono = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    valor_inss = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    valor_irrf = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    liquido = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    parcelas = models.JSONField(
+        default=list, blank=True,
+        help_text="Divisão do gozo por mês: [{ano, mes, dias, ferias, terco, inss}]",
+    )
+    memoria = models.JSONField(default=dict, blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-inicio"]
+        verbose_name = "férias"
+        verbose_name_plural = "férias"
+
+    def __str__(self):
+        return f"Férias de {self.funcionario.nome} a partir de {self.inicio:%d/%m/%Y}"
+
+    @property
+    def fim(self) -> date:
+        return self.inicio + timedelta(days=self.dias - 1)
+
+    @property
+    def retorno(self) -> date:
+        return self.fim + timedelta(days=1)
+
+    def dias_no_mes(self, ano: int, mes: int) -> int:
+        for p in self.parcelas:
+            if p["ano"] == ano and p["mes"] == mes:
+                return p["dias"]
+        return 0
+
+
 class Holerite(models.Model):
+    """Demonstrativo de valores (dmDev no eSocial). Um trabalhador pode ter vários no mês."""
+
+    TIPO = [
+        ("folha", "Folha mensal"),
+        ("ferias", "Recibo de férias"),
+        ("adiant13", "1ª parcela do 13º"),
+        ("dec13", "13º salário"),
+    ]
+    PREFIXO = {"folha": "FP", "ferias": "FE", "adiant13": "AD", "dec13": "DT"}
+
     competencia = models.ForeignKey(Competencia, on_delete=models.CASCADE, related_name="holerites")
     funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name="holerites")
+    tipo = models.CharField(max_length=8, choices=TIPO, default="folha")
+    ferias = models.ForeignKey(Ferias, on_delete=models.SET_NULL, null=True, blank=True)
+    data_pagamento = models.DateField(null=True)
     dias_trabalhados = models.PositiveSmallIntegerField(default=30)
     salario_contratual = models.DecimalField(max_digits=12, decimal_places=2)
     total_proventos = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
@@ -196,16 +333,20 @@ class Holerite(models.Model):
     memoria = models.JSONField("memória de cálculo", default=dict)
 
     class Meta:
-        ordering = ["funcionario__nome"]
-        constraints = [models.UniqueConstraint(fields=["competencia", "funcionario"], name="holerite_unico")]
+        ordering = ["funcionario__nome", "tipo"]
+        constraints = [
+            models.UniqueConstraint(fields=["competencia", "funcionario", "tipo", "ferias"], name="holerite_unico")
+        ]
 
     def __str__(self):
-        return f"Holerite {self.competencia} - {self.funcionario}"
+        return f"{self.get_tipo_display()} {self.competencia} - {self.funcionario}"
 
     @property
     def ide_dm_dev(self):
         """Identificador do demonstrativo no eSocial (único por trabalhador/período)."""
-        return f"FP{self.competencia.ano}{self.competencia.mes:02d}{self.funcionario.matricula}"[:30]
+        comp = self.competencia
+        sufixo = f"F{self.ferias_id}" if self.ferias_id else ""
+        return f"{self.PREFIXO[self.tipo]}{comp.ano}{comp.mes:02d}{self.funcionario.matricula}{sufixo}"[:30]
 
 
 class ItemHolerite(models.Model):
@@ -216,3 +357,33 @@ class ItemHolerite(models.Model):
 
     class Meta:
         ordering = ["rubrica__tipo", "rubrica__codigo"]
+
+
+class Guia(models.Model):
+    """Guias de recolhimento geradas a partir do eSocial."""
+
+    TIPO = [("darf", "DARF DCTFWeb (INSS + IRRF)"), ("fgts", "GFD - FGTS Digital")]
+    STATUS = [
+        ("prevista", "Prevista (aguardando eSocial)"),
+        ("disponivel", "Pronta para emitir"),
+        ("emitida", "Emitida"),
+        ("paga", "Paga"),
+        ("erro", "Erro"),
+    ]
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="guias")
+    competencia = models.ForeignKey(Competencia, on_delete=models.CASCADE, related_name="guias")
+    tipo = models.CharField(max_length=4, choices=TIPO)
+    valor_estimado = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    vencimento = models.DateField()
+    status = models.CharField(max_length=10, choices=STATUS, default="prevista")
+    pdf = models.BinaryField(null=True, blank=True, editable=False)
+    numero_documento = models.CharField(max_length=60, blank=True)
+    mensagem = models.TextField(blank=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["vencimento", "tipo"]
+        constraints = [models.UniqueConstraint(fields=["competencia", "tipo"], name="guia_unica")]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} {self.competencia}"

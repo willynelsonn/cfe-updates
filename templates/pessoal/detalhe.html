@@ -5,10 +5,11 @@
 <div class="topo">
   <h1>{{ f.nome }} <span class="muted" style="font-weight:400">· matr. {{ f.matricula }}</span></h1>
   <div class="acoes">
-    <a class="btn" href="{% url 'pessoal:editar' f.pk %}">Editar</a>
-    <form class="inline" method="post" action="{% url 'esocial:admissao' f.pk %}">{% csrf_token %}<button class="btn primario">Gerar S-2200 (admissão)</button></form>
-    {% if f.ativo %}<a class="btn perigo" href="{% url 'pessoal:desligar' f.pk %}">Desligar</a>
-    {% else %}<form class="inline" method="post" action="{% url 'esocial:desligamento' f.pk %}">{% csrf_token %}<button class="btn primario">Gerar S-2299 (desligamento)</button></form>{% endif %}
+    <a class="btn" href="{% url 'pessoal:editar' f.pk %}" title="Altera dados pessoais e do contrato">Editar</a>
+    {% if f.ativo %}<a class="btn" href="{% url 'folha:ferias_nova' %}?funcionario={{ f.pk }}" title="Programa e calcula as férias deste funcionário">Programar férias</a>{% endif %}
+    {% if not f.esocial_ja_cadastrado %}<form class="inline" method="post" action="{% url 'esocial:admissao' f.pk %}" data-confirmar="Gerar novamente a admissão (S-2200) de {{ f.nome }}?">{% csrf_token %}<button class="btn" title="A admissão é enviada sozinha ao cadastrar. Use se precisar gerar de novo.">Reenviar admissão</button></form>{% endif %}
+    {% if f.ativo %}<a class="btn perigo" href="{% url 'pessoal:desligar' f.pk %}" title="Registra a demissão e envia o S-2299">Desligar</a>
+    {% else %}<form class="inline" method="post" action="{% url 'esocial:desligamento' f.pk %}">{% csrf_token %}<button class="btn" title="Gera novamente o S-2299">Reenviar desligamento</button></form>{% endif %}
   </div>
 </div>
 <div class="grid">
@@ -38,10 +39,14 @@
     {% empty %}<tr><td colspan="6" class="muted">Sem dependentes.</td></tr>{% endfor %}</tbody>
   </table></div>
 </div>
+<div class="card">
+  <h2>Férias</h2>
+  <ul>{% for fe in ferias %}<li><a href="{% url 'folha:ferias_detalhe' fe.pk %}">{{ fe.inicio|date:"d/m/Y" }} a {{ fe.fim|date:"d/m/Y" }}</a> ({{ fe.dias }} dias) — aquisitivo {{ fe.aquisitivo_inicio|date:"d/m/Y" }}</li>{% empty %}<li class="muted">Nenhuma férias registrada.</li>{% endfor %}</ul>
+</div>
 <div class="grid">
   <div class="card">
     <h2>Holerites</h2>
-    <ul>{% for h in holerites %}<li><a href="{% url 'folha:holerite' h.pk %}">{{ h.competencia }}</a> — líquido R$ {{ h.liquido|floatformat:"2g" }}</li>{% empty %}<li class="muted">Nenhum.</li>{% endfor %}</ul>
+    <ul>{% for h in holerites %}<li><a href="{% url 'folha:holerite' h.pk %}">{{ h.competencia }} · {{ h.get_tipo_display }}</a> — líquido R$ {{ h.liquido|floatformat:"2g" }}</li>{% empty %}<li class="muted">Nenhum.</li>{% endfor %}</ul>
   </div>
   <div class="card">
     <h2>Eventos eSocial</h2>

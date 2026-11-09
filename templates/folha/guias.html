@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Guias {{ c }}{% endblock %}
+{% block content %}
+<div class="topo">
+  <h1>Guias de {% if c.decimo_terceiro %}13º/{{ c.ano|stringformat:"d" }}{% else %}{{ c }}{% endif %}</h1>
+  <div class="acoes">
+    <a class="btn" href="{% url 'folha:competencia' c.pk %}">Voltar à folha</a>
+    <form class="inline" method="post" action="{% url 'folha:gerar_guias' c.pk %}">{% csrf_token %}<button class="btn primario" data-ocupado="Gerando" title="Consulta o eSocial e prepara/emite as guias">Gerar guias</button></form>
+  </div>
+</div>
+<div class="explica">As duas guias são montadas pelo governo com base no que foi enviado ao eSocial. Por isso só ficam
+  <strong>prontas</strong> depois que o fechamento (S-1299) é aceito. Os valores abaixo são a estimativa do FolhaWeb para conferência.</div>
+
+{% for g in guias %}
+<div class="card">
+  <div class="topo" style="margin-bottom:6px">
+    <h2 style="margin:0">{{ g.get_tipo_display }}</h2>
+    <span class="tag {% if g.status == 'paga' or g.status == 'emitida' %}aceito{% elif g.status == 'erro' %}erro{% else %}pendente{% endif %}">{{ g.get_status_display }}</span>
+  </div>
+  <p>Valor estimado: <strong>R$ {{ g.valor_estimado|floatformat:"2g" }}</strong> · Vencimento: <strong>{{ g.vencimento|date:"d/m/Y" }}</strong></p>
+  {% if g.mensagem %}<p class="muted">{{ g.mensagem }}</p>{% endif %}
+  <div class="acoes">
+    {% if g.pdf %}<a class="btn primario" href="{% url 'folha:guia_pdf' g.pk %}" title="Baixa o PDF da guia para pagar no banco">Baixar PDF</a>{% endif %}
+    {% if g.tipo == 'darf' and not g.pdf %}
+      <a class="btn" href="{{ ecac_url|default:'https://cav.receita.fazenda.gov.br/autenticacao/login' }}" target="_blank" rel="noopener" title="Abre o e-CAC: DCTFWeb → período → Emitir DARF">Emitir no e-CAC</a>
+      <span class="dica">{% if integra %}Emissão automática habilitada: clique em “Gerar guias” quando estiver pronta.{% else %}Para emitir sem sair do FolhaWeb, contrate o Integra Contador (SERPRO) e configure as chaves.{% endif %}</span>
+    {% endif %}
+    {% if g.tipo == 'fgts' %}
+      <a class="btn" href="https://fgtsdigital.sistema.gov.br/portal/login" target="_blank" rel="noopener" title="Abre o FGTS Digital: Gestão de Guias → Emissão de Guia Rápida">Emitir no FGTS Digital</a>
+      <span class="dica">O governo não oferece API pública para a GFD: emita em “Gestão de Guias → Emissão de Guia Rápida” e pague por PIX.</span>
+    {% endif %}
+    {% if g.status != 'paga' %}<form class="inline" method="post" action="{% url 'folha:guia_paga' g.pk %}" data-confirmar="Confirmar que esta guia foi paga?">{% csrf_token %}<button class="btn" title="Registra o pagamento para tirar o alerta de vencimento">Marcar como paga</button></form>{% endif %}
+  </div>
+</div>
+{% empty %}
+<div class="msg warning">Calcule e feche a folha para gerar as guias.</div>
+{% endfor %}
+{% endblock %}

@@ -2,6 +2,7 @@
 {% block title %}{{ titulo }}{% endblock %}
 {% block content %}
 <div class="topo"><h1>{{ titulo }}</h1></div>
+{% if explicacao %}<div class="explica">{{ explicacao }}</div>{% endif %}
 {% if aviso %}<div class="msg warning">{{ aviso }}</div>{% endif %}
 <form method="post" class="card" {% if multipart or form.is_multipart %}enctype="multipart/form-data"{% endif %}>
   {% csrf_token %}
@@ -17,7 +18,7 @@
     {% endfor %}
   </div>
   <p class="acoes" style="margin-top:16px">
-    <button class="btn primario" type="submit">Salvar</button>
+    <button class="btn primario" type="submit" data-ocupado="Salvando">{{ botao|default:"Salvar" }}</button>
     <a class="btn" href="javascript:history.back()">Cancelar</a>
   </p>
 </form>

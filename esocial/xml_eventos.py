@@ -24,6 +24,7 @@ EVENTOS = {
     "S-1010": ("evtTabRubrica", 1),
     "S-1020": ("evtTabLotacao", 1),
     "S-2200": ("evtAdmissao", 2),
+    "S-2230": ("evtAfastTemp", 2),
     "S-2299": ("evtDeslig", 2),
     "S-1200": ("evtRemun", 3),
     "S-1210": ("evtPgtos", 3),
@@ -297,67 +298,66 @@ def s2299(funcionario):
 # ---------------------------------------------------------------------------
 # Eventos periódicos
 # ---------------------------------------------------------------------------
-def s1200(holerite):
-    """Remuneração do trabalhador (folha mensal)."""
-    comp = holerite.competencia
-    empresa = comp.empresa
-    f = holerite.funcionario
+def s1200(competencia, funcionario, holerites):
+    """Remuneração do trabalhador: um evento por trabalhador e período, com um dmDev por demonstrativo
+    (folha mensal, recibo de férias, 1ª parcela do 13º) ou o 13º anual (indApuracao = 2)."""
+    empresa = competencia.empresa
+    f = funcionario
     id_evento, root, evt = _raiz("S-1200", empresa)
-    _ide_evento(evt, empresa, retif=1, apuracao=1, per_apur=comp.per_apur)
+    _ide_evento(evt, empresa, retif=1, apuracao=competencia.ind_apuracao, per_apur=competencia.per_apur)
     _ide_empregador(evt, empresa)
     trab = sub(evt, "ideTrabalhador")
     sub(trab, "cpfTrab", f.cpf)
-    dm = sub(evt, "dmDev")
-    sub(dm, "ideDmDev", holerite.ide_dm_dev)
-    sub(dm, "codCateg", f.categoria)
-    per = sub(dm, "infoPerApur")
-    estab = _ide_estab_lot(per, empresa)
-    rem = sub(estab, "remunPerApur")
-    sub(rem, "matricula", f.matricula)
-    for item in holerite.itens.select_related("rubrica"):
-        it = sub(rem, "itensRemun")
-        sub(it, "codRubr", item.rubrica.codigo)
-        sub(it, "ideTabRubr", item.rubrica.ide_tab_rubr)
-        if item.referencia is not None:
-            sub(it, "qtdRubr", item.referencia)
-        sub(it, "vrRubr", item.valor)
-        sub(it, "indApurIR", 0)
-    nocivo = sub(rem, "infoAgNocivo")
-    sub(nocivo, "grauExp", 1)  # não exposto a agente nocivo
+    for holerite in holerites:
+        itens = list(holerite.itens.select_related("rubrica"))
+        if not itens:
+            continue
+        dm = sub(evt, "dmDev")
+        sub(dm, "ideDmDev", holerite.ide_dm_dev)
+        sub(dm, "codCateg", f.categoria)
+        per = sub(dm, "infoPerApur")
+        estab = _ide_estab_lot(per, empresa)
+        rem = sub(estab, "remunPerApur")
+        sub(rem, "matricula", f.matricula)
+        for item in itens:
+            it = sub(rem, "itensRemun")
+            sub(it, "codRubr", item.rubrica.codigo)
+            sub(it, "ideTabRubr", item.rubrica.ide_tab_rubr)
+            if item.referencia is not None:
+                sub(it, "qtdRubr", item.referencia)
+            sub(it, "vrRubr", item.valor)
+            sub(it, "indApurIR", 0)
+        nocivo = sub(rem, "infoAgNocivo")
+        sub(nocivo, "grauExp", 1)  # não exposto a agente nocivo
     return id_evento, root
 
 
-def s1210(empresa, per_apur: str, holerites, data_pagamento: date):
-    """Pagamentos de rendimentos do trabalho: um evento por beneficiário (CPF)."""
-    eventos = []
-    por_cpf: dict[str, list] = {}
+def s1210(empresa, per_apur: str, cpf: str, holerites):
+    """Pagamentos feitos no mês ``per_apur`` (regime de caixa) a um beneficiário."""
+    id_evento, root, evt = _raiz("S-1210", empresa)
+    _ide_evento(evt, empresa, retif=1, per_apur=per_apur)
+    _ide_empregador(evt, empresa)
+    benef = sub(evt, "ideBenef")
+    sub(benef, "cpfBenef", cpf)
     for h in holerites:
-        por_cpf.setdefault(h.funcionario.cpf, []).append(h)
-    for cpf, hs in por_cpf.items():
-        id_evento, root, evt = _raiz("S-1210", empresa)
-        _ide_evento(evt, empresa, retif=1, per_apur=per_apur)
-        _ide_empregador(evt, empresa)
-        benef = sub(evt, "ideBenef")
-        sub(benef, "cpfBenef", cpf)
-        for h in hs:
-            pg = sub(benef, "infoPgto")
-            sub(pg, "dtPgto", data_pagamento)
-            sub(pg, "tpPgto", 1)  # pagamento de remuneração informada em S-1200
-            sub(pg, "perRef", h.competencia.per_apur)
-            sub(pg, "ideDmDev", h.ide_dm_dev)
-            sub(pg, "vrLiq", max(h.liquido, Decimal("0")))
-        eventos.append((cpf, id_evento, root))
-    return eventos
+        pg = sub(benef, "infoPgto")
+        sub(pg, "dtPgto", h.data_pagamento)
+        sub(pg, "tpPgto", 1)  # remuneração informada em S-1200
+        sub(pg, "perRef", h.competencia.per_apur)
+        sub(pg, "ideDmDev", h.ide_dm_dev)
+        sub(pg, "vrLiq", max(h.liquido, Decimal("0")))
+    return id_evento, root
 
 
-def s1299(empresa, per_apur: str, tem_remun: bool, tem_pgtos: bool, transmitir_dctfweb: bool = False):
+def s1299(empresa, per_apur: str, tem_remun: bool, tem_pgtos: bool, transmitir_dctfweb: bool = False,
+          ind_apuracao: int = 1):
     """Fechamento dos eventos periódicos — gera a DCTFWeb e alimenta o FGTS Digital.
 
     Com ``transmitir_dctfweb`` a Receita transmite a DCTFWeb automaticamente após o
     fechamento (campo transDCTFWeb); sem ele a DCTFWeb fica "em andamento" no e-CAC.
     """
     id_evento, root, evt = _raiz("S-1299", empresa)
-    _ide_evento(evt, empresa, apuracao=1, per_apur=per_apur)
+    _ide_evento(evt, empresa, apuracao=ind_apuracao, per_apur=per_apur)
     _ide_empregador(evt, empresa)
     info = sub(evt, "infoFech")
     sub(info, "evtRemun", "S" if tem_remun else "N")
@@ -367,6 +367,28 @@ def s1299(empresa, per_apur: str, tem_remun: bool, tem_pgtos: bool, transmitir_d
     sub(info, "evtInfoComplPer", "N")
     if transmitir_dctfweb or empresa.class_trib == "04":
         sub(info, "transDCTFWeb", "S")
+    return id_evento, root
+
+
+def s2230_ferias(ferias):
+    """Afastamento por férias (motivo 15), com início e término no mesmo evento."""
+    f = ferias.funcionario
+    empresa = f.empresa
+    id_evento, root, evt = _raiz("S-2230", empresa)
+    _ide_evento(evt, empresa, retif=1)
+    _ide_empregador(evt, empresa)
+    vinc = sub(evt, "ideVinculo")
+    sub(vinc, "cpfTrab", f.cpf)
+    sub(vinc, "matricula", f.matricula)
+    info = sub(evt, "infoAfastamento")
+    ini = sub(info, "iniAfastamento")
+    sub(ini, "dtIniAfast", ferias.inicio)
+    sub(ini, "codMotAfast", "15")
+    per = sub(ini, "perAquis")
+    sub(per, "dtInicio", ferias.aquisitivo_inicio)
+    sub(per, "dtFim", ferias.aquisitivo_fim)
+    fim = sub(info, "fimAfastamento")
+    sub(fim, "dtTermAfast", ferias.fim)
     return id_evento, root
 
 

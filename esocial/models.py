@@ -1,7 +1,7 @@
 from django.db import models
 
 from empresas.models import Empresa
-from folha.models import Competencia
+from folha.models import Competencia, Ferias
 from pessoal.models import Funcionario
 
 
@@ -34,7 +34,7 @@ class Lote(models.Model):
 
 class Evento(models.Model):
     STATUS = [
-        ("pendente", "Pendente de envio"),
+        ("pendente", "Na fila de envio"),
         ("enviado", "Enviado"),
         ("aceito", "Aceito"),
         ("rejeitado", "Rejeitado"),
@@ -43,9 +43,17 @@ class Evento(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="eventos_esocial")
     tipo = models.CharField(max_length=6)  # S-1000, S-2200...
     descricao = models.CharField(max_length=200)
+    chave = models.CharField(
+        max_length=80, db_index=True, blank=True,
+        help_text="Identifica o objeto do evento (ex.: S-2200:func:5) para dependências e reenvio.",
+    )
+    depende = models.JSONField(
+        default=list, blank=True, help_text="Chaves de eventos que precisam estar aceitos antes do envio."
+    )
     id_evento = models.CharField(max_length=36, unique=True)
     funcionario = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, null=True, blank=True)
     competencia = models.ForeignKey(Competencia, on_delete=models.SET_NULL, null=True, blank=True)
+    ferias = models.ForeignKey(Ferias, on_delete=models.SET_NULL, null=True, blank=True)
     per_apur = models.CharField(max_length=7, blank=True)
     xml = models.TextField()
     xml_assinado = models.TextField(blank=True)
@@ -61,6 +69,10 @@ class Evento(models.Model):
 
     def __str__(self):
         return f"{self.tipo} - {self.descricao}"
+
+    @property
+    def corrigivel(self):
+        return self.status in {"rejeitado", "erro"}
 
     @property
     def grupo(self):

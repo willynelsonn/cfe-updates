@@ -7,13 +7,13 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
 from empresas.models import Empresa
-from folha.models import Competencia, Lancamento, Rubrica, criar_rubricas_padrao
-from folha.servico import calcular_competencia
+from folha.models import Competencia, Ferias, Lancamento, Rubrica, criar_rubricas_padrao
+from folha.servico import calcular_competencia, calcular_ferias
 from pessoal.models import Cargo, Dependente, Funcionario
 
 
 class Command(BaseCommand):
-    help = "Cria dados de demonstração (empresa fictícia, 3 funcionários e a folha de 10/2026)."
+    help = "Cria dados de demonstração (empresa fictícia, 3 funcionários, folhas de 10 e 11/2026 e férias)."
 
     def handle(self, *args, **opts):
         User = get_user_model()
@@ -37,11 +37,11 @@ class Command(BaseCommand):
                     cod_municipio="3550308", uf="SP", grau_instrucao="07", raca_cor=3)
         pessoas = [
             dict(matricula="0001", nome="Maria da Silva", cpf="52998224725", data_nascimento=date(1990, 5, 10), sexo="F",
-                 data_admissao=date(2024, 3, 1), cargo=padeiro, salario=Decimal("3000"), vale_transporte=Decimal("220")),
+                 data_admissao=date(2025, 3, 1), cargo=padeiro, salario=Decimal("3000"), vale_transporte=Decimal("220")),
             dict(matricula="0002", nome="José Souza", cpf="11144477735", data_nascimento=date(1998, 8, 2), sexo="M",
                  data_admissao=date(2025, 6, 2), cargo=atendente, salario=Decimal("1700")),
             dict(matricula="0003", nome="Ana Pereira", cpf="12345678909", data_nascimento=date(1985, 1, 20), sexo="F",
-                 data_admissao=date(2022, 1, 10), cargo=gerente, salario=Decimal("6500")),
+                 data_admissao=date(2025, 1, 10), cargo=gerente, salario=Decimal("6500")),
         ]
         funcs = {}
         for p in pessoas:
@@ -54,6 +54,17 @@ class Command(BaseCommand):
 
         comp, criada = Competencia.objects.get_or_create(empresa=emp, ano=2026, mes=10,
                                                          defaults={"data_pagamento": date(2026, 11, 5)})
+        if not Ferias.objects.filter(funcionario=funcs["0001"]).exists():
+            fe = Ferias.objects.create(
+                funcionario=funcs["0001"], aquisitivo_inicio=date(2025, 3, 1), aquisitivo_fim=date(2026, 2, 28),
+                inicio=date(2026, 12, 7), dias=20, dias_abono=10, data_pagamento=date(2026, 12, 4),
+                data_aviso=date(2026, 11, 6),
+            )
+            calcular_ferias(fe)
+        Competencia.objects.get_or_create(
+            empresa=emp, ano=2026, mes=11,
+            defaults={"data_pagamento": date(2026, 12, 4), "data_adiantamento_13": date(2026, 11, 27)},
+        )
         if criada:
             he = Rubrica.objects.get(empresa=emp, papel="he50")
             faltas = Rubrica.objects.get(empresa=emp, papel="faltas")

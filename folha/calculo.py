@@ -174,3 +174,114 @@ def aviso_previo_dias(admissao: date, desligamento: date) -> int:
     """Lei 12.506/2011: 30 dias + 3 por ano completo, até 90."""
     anos = desligamento.year - admissao.year - ((desligamento.month, desligamento.day) < (admissao.month, admissao.day))
     return min(30 + 3 * max(anos, 0), 90)
+
+
+# ---------------------------------------------------------------------------
+# 13º salário (Leis 4.090/1962 e 4.749/1965)
+# ---------------------------------------------------------------------------
+def avos_13(ano: int, admissao: date, desligamento: date | None = None, ate_mes: int = 12) -> int:
+    """Avos de 13º: 1/12 por mês do ano com 15 ou mais dias de trabalho (Lei 4.090, art. 1º, §2º)."""
+    avos = 0
+    for mes in range(1, ate_mes + 1):
+        ultimo = calendar.monthrange(ano, mes)[1]
+        ini = max(date(ano, mes, 1), admissao)
+        fim = min(date(ano, mes, ultimo), desligamento) if desligamento else date(ano, mes, ultimo)
+        if fim >= ini and (fim - ini).days + 1 >= 15:
+            avos += 1
+    return avos
+
+
+def irrf_13(valor_13: Decimal, inss_13: Decimal, dependentes: int, tabela: TabelasAno) -> ResultadoIRRF:
+    """IRRF do 13º: tributação exclusiva, só com deduções legais (sem desconto simplificado).
+
+    A redução da Lei 15.270/2025 é aplicada sobre o 13º bruto (art. 3º-A, §3º, da Lei 9.250/1995,
+    na redação da Lei 15.270) quando ``tabela.redutor_irrf_13`` estiver ligado.
+    """
+    rend = r2(valor_13)
+    ded_dep = r2(tabela.deducao_dependente_irrf * dependentes)
+    base = r2(max(rend - r2(inss_13) - ded_dep, ZERO))
+    aliquota, imposto = ZERO, ZERO
+    for faixa in tabela.irrf:
+        if faixa.ate is None or base <= faixa.ate:
+            aliquota = faixa.aliquota
+            imposto = max(r2(base * faixa.aliquota / CEM - faixa.deducao), ZERO)
+            break
+    reducao = ZERO
+    red = tabela.redutor_irrf
+    if red and tabela.redutor_irrf_13 and imposto > 0:
+        if rend <= red.limite_isencao:
+            reducao = min(red.reducao_maxima, imposto)
+        elif rend <= red.limite_parcial:
+            reducao = min(max(r2(red.constante - red.fator * rend), ZERO), imposto)
+    valor = r2(imposto - reducao)
+    if valor <= tabela.irrf_minimo_retencao:
+        valor = ZERO
+    return ResultadoIRRF(
+        rendimento_tributavel=rend, deducao_inss=r2(inss_13), deducao_dependentes=ded_dep, deducao_pensao=ZERO,
+        usou_desconto_simplificado=False, base=base, aliquota=aliquota, imposto_tabela=imposto,
+        reducao_lei_15270=reducao, valor=valor,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Férias (CLT arts. 129 a 145)
+# ---------------------------------------------------------------------------
+def dias_direito_ferias(faltas_injustificadas: int) -> int:
+    """CLT art. 130."""
+    if faltas_injustificadas <= 5:
+        return 30
+    if faltas_injustificadas <= 14:
+        return 24
+    if faltas_injustificadas <= 23:
+        return 18
+    if faltas_injustificadas <= 32:
+        return 12
+    return 0
+
+
+def dividir_por_mes(inicio: date, dias: int) -> list[tuple[int, int, int]]:
+    """Divide um período de gozo em (ano, mes, dias) por mês civil."""
+    partes: list[tuple[int, int, int]] = []
+    atual = inicio
+    restantes = dias
+    while restantes > 0:
+        ultimo = calendar.monthrange(atual.year, atual.month)[1]
+        no_mes = min(restantes, ultimo - atual.day + 1)
+        partes.append((atual.year, atual.month, no_mes))
+        restantes -= no_mes
+        atual = date(atual.year + (atual.month == 12), atual.month % 12 + 1, 1)
+    return partes
+
+
+# ---------------------------------------------------------------------------
+# Prazos
+# ---------------------------------------------------------------------------
+def proximo_dia_util(d: date, sabado_util: bool = False) -> date:
+    """Primeiro dia útil a partir de ``d`` (não considera feriados)."""
+    while d.weekday() == 6 or (d.weekday() == 5 and not sabado_util):
+        d = date.fromordinal(d.toordinal() + 1)
+    return d
+
+
+def dia_util_anterior(d: date) -> date:
+    """Antecipa para o dia útil anterior (sábado/domingo; não considera feriados)."""
+    while d.weekday() >= 5:
+        d = date.fromordinal(d.toordinal() - 1)
+    return d
+
+
+def quinto_dia_util(ano: int, mes: int) -> date:
+    """5º dia útil do mês (CLT art. 459, §1º; sábado conta como dia útil, domingo não)."""
+    d, contados = date(ano, mes, 1), 0
+    while True:
+        if d.weekday() != 6:
+            contados += 1
+            if contados == 5:
+                return d
+        d = date.fromordinal(d.toordinal() + 1)
+
+
+def vencimento_dia_20(ano: int, mes: int) -> date:
+    """DCTFWeb e FGTS Digital vencem no dia 20 do mês seguinte, antecipando se não for dia útil."""
+    ano_v, mes_v = (ano + 1, 1) if mes == 12 else (ano, mes + 1)
+    return dia_util_anterior(date(ano_v, mes_v, 20))

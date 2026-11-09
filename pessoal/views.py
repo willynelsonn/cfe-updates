@@ -6,6 +6,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from empresas.mixins import EmpresaRequiredMixin
+from esocial.servico import ErroESocial, gerar_admissao, gerar_desligamento, tentar_processar
 
 from .forms import CargoForm, DependenteForm, DesligamentoForm, FuncionarioForm
 from .models import Cargo, Dependente, Funcionario
@@ -79,8 +80,20 @@ class FuncionarioCreateView(EmpresaRequiredMixin, FuncionarioFormMixin, CreateVi
 
     def form_valid(self, form):
         form.instance.empresa = self.empresa
-        messages.success(self.request, "Funcionário cadastrado. Gere o evento S-2200 (admissão) na ficha dele.")
-        return super().form_valid(form)
+        resp = super().form_valid(form)
+        func = self.object
+        if self.empresa.envio_automatico and not func.esocial_ja_cadastrado:
+            try:
+                gerar_admissao(func)
+            except ErroESocial as exc:
+                messages.warning(self.request, f"Funcionário salvo, mas a admissão não foi para o eSocial: {exc}")
+                return resp
+            messages.success(self.request, "Funcionário cadastrado e admissão (S-2200) colocada na fila do eSocial.")
+            if problema := tentar_processar(self.empresa):
+                messages.warning(self.request, problema)
+        else:
+            messages.success(self.request, "Funcionário cadastrado.")
+        return resp
 
 
 class FuncionarioUpdateView(EmpresaRequiredMixin, FuncionarioFormMixin, UpdateView):
@@ -96,6 +109,7 @@ class FuncionarioDetailView(EmpresaRequiredMixin, DetailView):
         ctx["form_dependente"] = DependenteForm()
         ctx["eventos"] = self.object.evento_set.all()[:20]
         ctx["holerites"] = self.object.holerites.select_related("competencia")[:12]
+        ctx["ferias"] = self.object.ferias.exclude(status="cancelada")[:6]
         return ctx
 
 
@@ -105,9 +119,22 @@ class DesligamentoView(EmpresaRequiredMixin, UpdateView):
     template_name = "form.html"
     extra_context = {
         "titulo": "Desligar funcionário",
-        "aviso": "Depois de salvar, gere o S-2299 na ficha do funcionário. O cálculo das verbas rescisórias "
-                 "(TRCT) ainda não é feito automaticamente por esta versão.",
+        "aviso": "Ao salvar, o desligamento (S-2299) vai automaticamente para o eSocial. Atenção: o cálculo das "
+                 "verbas rescisórias (TRCT) ainda não é feito por esta versão — calcule com o contador.",
     }
+
+    def form_valid(self, form):
+        resp = super().form_valid(form)
+        if self.empresa.envio_automatico:
+            try:
+                gerar_desligamento(self.object)
+            except ErroESocial as exc:
+                messages.warning(self.request, str(exc))
+                return resp
+            messages.success(self.request, "Desligamento (S-2299) colocado na fila do eSocial.")
+            if problema := tentar_processar(self.empresa):
+                messages.warning(self.request, problema)
+        return resp
 
     def get_success_url(self):
         return reverse("pessoal:detalhe", args=[self.object.pk])

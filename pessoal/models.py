@@ -131,6 +131,11 @@ class Funcionario(models.Model):
     motivo_desligamento = models.CharField(max_length=2, choices=MOTIVO_DESLIGAMENTO, blank=True)
     aviso_previo_indenizado = models.BooleanField("aviso prévio indenizado", default=False)
 
+    esocial_ja_cadastrado = models.BooleanField(
+        "admissão já enviada ao eSocial por outro sistema", default=False,
+        help_text="Marque para funcionários que já têm S-2200 aceito (ex.: enviados pelo Domínio).",
+    )
+
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 

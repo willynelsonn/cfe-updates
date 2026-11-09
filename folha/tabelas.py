@@ -55,6 +55,10 @@ class TabelasAno:
     fgts_aliquota_aprendiz: D = D("2")
     cpp_patronal: D = D("20")
     irrf_minimo_retencao: D = D("10.00")
+    # A redução da Lei 15.270/2025 também se aplica ao 13º (art. 3º-A, §3º, Lei 9.250/1995)
+    # e às férias, que são tributadas em separado pela tabela mensal. Conferir com a RFB.
+    redutor_irrf_13: bool = True
+    redutor_irrf_ferias: bool = True
     observacoes: list[str] = field(default_factory=list)
 
     @property

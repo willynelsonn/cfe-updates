@@ -1,0 +1,12 @@
+{% if alertas %}
+<div class="alertas">
+  {% for a in alertas %}
+  <div class="alerta {{ a.nivel }}">
+    <div class="t">{% if a.nivel == 'critico' %}Urgente: {% endif %}{{ a.titulo }}</div>
+    {% if a.acao_url %}<a class="btn pequeno" href="{{ a.acao_url }}">{{ a.acao_texto }}</a>{% endif %}
+    <div class="d">{{ a.detalhe }}</div>
+    <div class="lei">Base legal: {{ a.base_legal }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

@@ -81,6 +81,16 @@ class Empresa(models.Model):
         help_text="Quem assina e envia (o escritório contábil ou a própria empresa). Em branco = a própria empresa.",
     )
 
+    envio_automatico = models.BooleanField(
+        "envio automático ao eSocial", default=True,
+        help_text="Gera e transmite sozinho os eventos ao salvar admissões, férias, desligamentos e ao apurar a folha.",
+    )
+    esocial_ja_iniciado = models.BooleanField(
+        "empresa já cadastrada no eSocial por outro sistema", default=False,
+        help_text="Marque se o S-1000/S-1005/S-1020 já foram enviados (ex.: pelo Domínio). "
+                  "O FolhaWeb então só envia as rubricas próprias (S-1010).",
+    )
+
     ativa = models.BooleanField(default=True)
     criada_em = models.DateTimeField(auto_now_add=True)
 

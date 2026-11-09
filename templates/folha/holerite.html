@@ -4,13 +4,15 @@
 <div class="topo nao-imprimir"><h1>Holerite</h1><div class="acoes"><a class="btn" href="{% url 'folha:competencia' h.competencia.pk %}">Voltar</a><button class="btn primario" onclick="window.print()">Imprimir</button></div></div>
 {% include "folha/_holerite.html" %}
 <details class="card nao-imprimir"><summary>Memória de cálculo</summary>
-  <p>Valor-hora: R$ {{ h.memoria.valor_hora }} (divisor {{ h.memoria.divisor_horas }})</p>
-  <p>INSS — base {{ h.memoria.inss.base }}:</p>
-  <ul>{% for f in h.memoria.inss.faixas %}<li>{{ f.0 }} × {{ f.1 }}% = {{ f.2 }}</li>{% endfor %}</ul>
-  <p>IRRF — rendimento tributável {{ h.memoria.irrf.rendimento_tributavel }}, {{ h.memoria.irrf.dependentes }} dependente(s),
+  {% if h.memoria.avos %}<p>13º: {{ h.memoria.avos }}/12 avos sobre R$ {{ h.memoria.remuneracao }}{% if h.memoria.adiantado %}; adiantamento já pago R$ {{ h.memoria.adiantado }}{% endif %}.</p>{% endif %}
+  {% if h.memoria.valor_hora %}<p>Valor-hora: R$ {{ h.memoria.valor_hora }} (divisor {{ h.memoria.divisor_horas }})</p>{% endif %}
+  {% if h.memoria.inss.inclui_ferias and h.memoria.inss.inclui_ferias != "0" %}<p>A base do INSS inclui R$ {{ h.memoria.inss.inclui_ferias }} de férias pagas no mês.</p>{% endif %}
+  {% if h.memoria.inss %}<p>INSS — base {{ h.memoria.inss.base }}:</p>
+  <ul>{% for f in h.memoria.inss.faixas %}<li>{{ f.0 }} × {{ f.1 }}% = {{ f.2 }}</li>{% endfor %}</ul>{% endif %}
+  {% if h.memoria.irrf %}<p>IRRF — rendimento tributável {{ h.memoria.irrf.rendimento_tributavel }}, {{ h.memoria.irrf.dependentes }} dependente(s),
   {% if h.memoria.irrf.desconto_simplificado %}desconto simplificado{% else %}deduções legais{% endif %};
   base {{ h.memoria.irrf.base }} × {{ h.memoria.irrf.aliquota }}% = {{ h.memoria.irrf.imposto_tabela }};
-  redução Lei 15.270 {{ h.memoria.irrf.reducao_lei_15270 }}; IRRF {{ h.memoria.irrf.valor }}.</p>
+  redução Lei 15.270 {{ h.memoria.irrf.reducao_lei_15270 }}; IRRF {{ h.memoria.irrf.valor }}.</p>{% endif %}
   {% if h.memoria.dsr %}<p>DSR: {{ h.memoria.dsr.dias_uteis }} dias úteis, {{ h.memoria.dsr.dias_repouso }} de repouso.</p>{% endif %}
   {% for a in h.memoria.avisos %}<p class="msg warning">{{ a }}</p>{% endfor %}
 </details>

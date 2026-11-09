@@ -61,4 +61,5 @@ def filho(func, nascimento=date(2020, 1, 1), **kw) -> Dependente:
 
 
 def competencia(emp, ano=2026, mes=10, **kw) -> Competencia:
-    return Competencia.objects.create(empresa=emp, ano=ano, mes=mes, data_pagamento=date(2026, 11, 5), **kw)
+    kw.setdefault("data_pagamento", date(ano + (mes == 12), mes % 12 + 1, 5))
+    return Competencia.objects.create(empresa=emp, ano=ano, mes=mes, **kw)

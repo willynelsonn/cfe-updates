@@ -121,6 +121,18 @@ ESOCIAL_TIMEOUT = int(os.environ.get("FOLHA_ESOCIAL_TIMEOUT", "60"))
 # reconhecer, aponte aqui um arquivo .pem com as ACs raiz/intermediárias da ICP-Brasil.
 ESOCIAL_CA_BUNDLE = os.environ.get("FOLHA_ESOCIAL_CA_BUNDLE", "")
 
+# Integra Contador (SERPRO) — emissão automática do DARF da DCTFWeb. Serviço pago e opcional.
+INTEGRA_CONTADOR = {
+    "key": os.environ.get("FOLHA_INTEGRA_KEY", ""),
+    "secret": os.environ.get("FOLHA_INTEGRA_SECRET", ""),
+    "contratante": os.environ.get("FOLHA_INTEGRA_CONTRATANTE", ""),
+    "servico_darf": os.environ.get("FOLHA_INTEGRA_SERVICO_DARF", "GERARGUIA31"),
+    "url_autenticacao": os.environ.get("FOLHA_INTEGRA_URL_AUTH", "https://autenticacao.sapi.serpro.gov.br/authenticate"),
+    "url_api": os.environ.get("FOLHA_INTEGRA_URL_API", "https://gateway.apiserpro.serpro.gov.br/integra-contador/v1"),
+}
+FGTS_DIGITAL_URL = "https://fgtsdigital.sistema.gov.br/portal/login"
+ECAC_URL = "https://cav.receita.fazenda.gov.br/autenticacao/login"
+
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
