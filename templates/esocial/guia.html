@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}DCTFWeb e FGTS Digital{% endblock %}
+{% block content %}
+<div class="topo"><h1>DCTFWeb e FGTS Digital</h1></div>
+<div class="card">
+  <h2>Como tudo se conecta</h2>
+  <p>Hoje não existe mais "enviar a DCTFWeb" ou "gerar a SEFIP" separadamente: <strong>o eSocial é a fonte de tudo</strong>.
+  Quando o fechamento (S-1299) é processado, a Receita monta a DCTFWeb e a Caixa/MTE montam o FGTS Digital com os mesmos dados dos S-1200, S-1210 e S-2299.</p>
+  <ol class="passos">
+    <li>Fechar a competência no FolhaWeb e transmitir os eventos (S-1200 → S-1210 → S-1299).</li>
+    <li>Consultar o retorno até o S-1299 ficar <em>aceito</em>. O recibo dele traz os totais de INSS e IRRF apurados pelo governo — confira com a prévia da competência.</li>
+    <li><strong>DCTFWeb:</strong> se você marcou "transmitir automaticamente" no fechamento, ela já foi transmitida. Senão, entre no e-CAC → <em>Declarações e Demonstrativos → DCTFWeb</em>, abra o período, confira e transmita.</li>
+    <li>Ainda no e-CAC, emita o <strong>DARF</strong> da DCTFWeb (INSS + patronal + RAT + terceiros e IRRF). Vencimento: dia 20 do mês seguinte (antecipa se não for dia útil).</li>
+    <li><strong>FGTS Digital:</strong> acesse o portal FGTS Digital (gov.br / certificado), em <em>Gestão de Guias → Emissão de Guia Rápida</em>, e emita a GFD (paga por PIX). Vencimento: dia 20 do mês seguinte.</li>
+    <li>Nas rescisões, o FGTS rescisório (incluindo a multa de 40%) também é emitido no FGTS Digital depois do S-2299 processado; prazo de 10 dias do desligamento.</li>
+  </ol>
+</div>
+<div class="card">
+  <h2>Escritório contábil atuando pelo cliente</h2>
+  <ul>
+    <li>eSocial e DCTFWeb: procuração eletrônica no e-CAC do cliente para o CNPJ do escritório (serviços do eSocial e da DCTFWeb). Informe o CNPJ do escritório em "transmissor" no cadastro da empresa e use o certificado do escritório.</li>
+    <li>FGTS Digital: a procuração é cadastrada no próprio portal FGTS Digital (não vale a do e-CAC).</li>
+  </ul>
+</div>
+<div class="card">
+  <h2>Próximas integrações possíveis</h2>
+  <ul>
+    <li>Emissão do DARF da DCTFWeb por API: a Receita/SERPRO oferece o <em>Integra Contador</em> (serviço pago, contratado na loja do SERPRO).</li>
+    <li>Leitura dos totalizadores S-5001/S-5002/S-5003/S-5011/S-5013 do retorno do eSocial para conferência automática com a prévia.</li>
+  </ul>
+</div>
+{% endblock %}

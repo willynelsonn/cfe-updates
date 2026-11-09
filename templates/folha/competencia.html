@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Folha {{ object }}{% endblock %}
+{% block content %}
+{% with c=object %}
+<div class="topo">
+  <h1>Folha {{ c }} <span class="tag {{ c.status }}">{{ c.get_status_display }}</span></h1>
+  <div class="acoes">
+    {% if c.editavel %}<form class="inline" method="post" action="{% url 'folha:calcular' c.pk %}">{% csrf_token %}<button class="btn primario">Calcular folha</button></form>{% endif %}
+    {% if holerites %}<a class="btn" href="{% url 'folha:holerites_impressao' c.pk %}" target="_blank">Imprimir holerites</a>{% endif %}
+  </div>
+</div>
+{% if not tabela_atualizada %}<div class="msg warning">Não há tabelas legais (INSS/IRRF) de {{ c.ano }} cadastradas. O cálculo está usando as de {{ tabela.ano }}. Atualize folha/tabelas.py.</div>{% endif %}
+<p class="muted">Pagamento em {{ c.data_pagamento|date:"d/m/Y" }} · salário mínimo R$ {{ tabela.salario_minimo|floatformat:"2g" }} · teto INSS R$ {{ tabela.teto_inss|floatformat:"2g" }}</p>
+
+{% if c.editavel %}
+<form method="post" action="{% url 'folha:lancamento_novo' c.pk %}" class="card">
+  {% csrf_token %}
+  <h2>Lançar evento variável</h2>
+  <div class="form-grid">
+    {% for campo in form_lancamento %}<div class="campo"><label for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}{% if campo.help_text %}<div class="ajuda">{{ campo.help_text }}</div>{% endif %}</div>{% endfor %}
+  </div>
+  <p><button class="btn">Adicionar</button></p>
+</form>
+{% endif %}
+
+{% if lancamentos %}
+<h2>Lançamentos</h2>
+<div class="tabela"><table>
+  <thead><tr><th>Funcionário</th><th>Rubrica</th><th class="num">Qtd.</th><th class="num">Valor</th><th>Obs.</th><th></th></tr></thead>
+  <tbody>{% for l in lancamentos %}<tr><td>{{ l.funcionario.nome }}</td><td>{{ l.rubrica }}</td><td class="num">{{ l.quantidade|default_if_none:"" }}</td>
+  <td class="num">{{ l.valor|default_if_none:""|floatformat:"2g" }}</td><td>{{ l.observacao }}</td>
+  <td>{% if c.editavel %}<form class="inline" method="post" action="{% url 'folha:lancamento_excluir' l.pk %}">{% csrf_token %}<button class="btn pequeno perigo">Excluir</button></form>{% endif %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}
+
+{% if holerites %}
+<h2>Holerites</h2>
+<div class="tabela"><table>
+  <thead><tr><th>Funcionário</th><th class="num">Dias</th><th class="num">Proventos</th><th class="num">Descontos</th><th class="num">INSS</th><th class="num">IRRF</th><th class="num">FGTS</th><th class="num">Líquido</th></tr></thead>
+  <tbody>{% for h in holerites %}<tr>
+    <td><a href="{% url 'folha:holerite' h.pk %}">{{ h.funcionario.nome }}</a></td><td class="num">{{ h.dias_trabalhados }}</td>
+    <td class="num">{{ h.total_proventos|floatformat:"2g" }}</td><td class="num">{{ h.total_descontos|floatformat:"2g" }}</td>
+    <td class="num">{{ h.valor_inss|floatformat:"2g" }}</td><td class="num">{{ h.valor_irrf|floatformat:"2g" }}</td>
+    <td class="num">{{ h.valor_fgts|floatformat:"2g" }}</td><td class="num"><strong>{{ h.liquido|floatformat:"2g" }}</strong></td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}
+
+{% if resumo %}
+<div class="grid">
+  <div class="card">
+    <h2>Totais da folha</h2>
+    <table>
+      <tr><td>Proventos</td><td class="num">{{ resumo.total_proventos|floatformat:"2g" }}</td></tr>
+      <tr><td>Descontos</td><td class="num">{{ resumo.total_descontos|floatformat:"2g" }}</td></tr>
+      <tr><td><strong>Líquido a pagar</strong></td><td class="num"><strong>{{ resumo.total_liquido|floatformat:"2g" }}</strong></td></tr>
+      <tr><td>Custo total para a empresa</td><td class="num">{{ resumo.custo_total_empresa|floatformat:"2g" }}</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Prévia da DCTFWeb (previdenciário)</h2>
+    <table>
+      <tr><td>INSS dos empregados</td><td class="num">{{ resumo.inss_segurados|floatformat:"2g" }}</td></tr>
+      <tr><td>Patronal 20% {% if not c.empresa.recolhe_cpp_patronal %}<span class="muted">(no DAS)</span>{% endif %}</td><td class="num">{{ resumo.cpp_patronal|floatformat:"2g" }}</td></tr>
+      <tr><td>RAT ajustado ({{ c.empresa.aliq_rat_ajustada|floatformat:4 }}%)</td><td class="num">{{ resumo.rat|floatformat:"2g" }}</td></tr>
+      <tr><td>Terceiros ({{ c.empresa.aliq_terceiros }}%)</td><td class="num">{{ resumo.terceiros|floatformat:"2g" }}</td></tr>
+      <tr><td>(-) Salário-família</td><td class="num">{{ resumo.salario_familia|floatformat:"2g" }}</td></tr>
+      <tr><td><strong>Previdência a recolher</strong></td><td class="num"><strong>{{ resumo.previdencia_a_recolher|floatformat:"2g" }}</strong></td></tr>
+      <tr><td>IRRF retido</td><td class="num">{{ resumo.irrf|floatformat:"2g" }}</td></tr>
+    </table>
+    <p class="muted">Estimativa para conferência. O valor oficial é apurado pela Receita a partir do S-1200/S-1210/S-1299.</p>
+  </div>
+  <div class="card">
+    <h2>Prévia do FGTS Digital</h2>
+    <table>
+      <tr><td>Base do FGTS</td><td class="num">{{ resumo.base_fgts|floatformat:"2g" }}</td></tr>
+      <tr><td><strong>FGTS do mês (8%)</strong></td><td class="num"><strong>{{ resumo.fgts|floatformat:"2g" }}</strong></td></tr>
+    </table>
+    <p class="muted">A guia (GFD) é emitida no portal FGTS Digital com base no eSocial; vence no dia 20 do mês seguinte.</p>
+  </div>
+</div>
+{% endif %}
+
+{% if c.status == "calculada" %}
+<form method="post" action="{% url 'folha:fechar' c.pk %}" class="card" onsubmit="return confirm('Fechar a competência e gerar os eventos do eSocial? Depois de fechada ela não pode ser recalculada.')">
+  {% csrf_token %}
+  <h2>Fechar competência</h2>
+  <p>Gera o S-1200 de cada trabalhador, o S-1210 dos pagamentos e o S-1299 de fechamento. A DCTFWeb e o FGTS Digital são montados pelo governo a partir desses eventos.</p>
+  <div class="campo">{{ form_fechamento.transmitir_dctfweb }} <label for="{{ form_fechamento.transmitir_dctfweb.id_for_label }}" style="display:inline">{{ form_fechamento.transmitir_dctfweb.label }}</label></div>
+  <p><button class="btn primario">Fechar e gerar eventos do eSocial</button></p>
+</form>
+{% endif %}
+
+{% if eventos %}
+<h2>Eventos desta competência</h2>
+<ul>{% for e in eventos %}<li><a href="{% url 'esocial:evento' e.pk %}">{{ e.tipo }}</a> {{ e.descricao }} <span class="tag {{ e.status }}">{{ e.get_status_display }}</span></li>{% endfor %}</ul>
+{% endif %}
+{% endwith %}
+{% endblock %}

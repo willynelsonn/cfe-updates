@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Holerites {{ comp }}{% endblock %}
+{% block content %}
+<div class="topo nao-imprimir"><h1>Holerites {{ comp }}</h1><button class="btn primario" onclick="window.print()">Imprimir</button></div>
+{% for item in lista %}{% with h=item.h proventos=item.proventos descontos=item.descontos %}{% include "folha/_holerite.html" %}{% endwith %}{% endfor %}
+{% endblock %}

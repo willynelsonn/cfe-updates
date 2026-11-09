@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Rubricas{% endblock %}
+{% block content %}
+<div class="topo"><h1>Rubricas</h1><a class="btn primario" href="{% url 'folha:rubrica_nova' %}">Nova rubrica</a></div>
+<p class="muted">As incidências (INSS, IRRF, FGTS) definem como cada verba entra nas bases de cálculo e são enviadas ao eSocial no S-1010. Confira com o contador antes de enviar.</p>
+<div class="tabela"><table>
+  <thead><tr><th>Código</th><th>Descrição</th><th>Tipo</th><th>natRubr</th><th>INSS</th><th>IRRF</th><th>FGTS</th><th>Cálculo</th><th></th></tr></thead>
+  <tbody>{% for r in object_list %}
+    <tr class="{% if not r.ativa %}muted{% endif %}"><td>{{ r.codigo }}</td><td>{{ r.descricao }}</td><td>{{ r.get_tipo_display }}</td><td>{{ r.natureza }}</td>
+    <td>{{ r.inc_cp }}</td><td>{{ r.inc_irrf }}</td><td>{{ r.inc_fgts }}</td><td>{{ r.get_papel_display }}</td>
+    <td><a class="btn pequeno" href="{% url 'folha:rubrica_editar' r.pk %}">Editar</a></td></tr>
+  {% endfor %}</tbody>
+</table></div>
+{% endblock %}

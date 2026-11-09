@@ -1,0 +1,52 @@
+{% load static %}<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}FolhaWeb{% endblock %} · FolhaWeb</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+{% if user.is_authenticated %}
+<div class="layout">
+  <aside class="sidebar">
+    <a class="brand" href="{% url 'dashboard' %}">FolhaWeb</a>
+    {% if empresas_disponiveis %}
+    <form method="post" id="trocar-empresa" action="">
+      {% csrf_token %}
+      <select aria-label="Empresa ativa" onchange="this.form.action=this.value; this.form.submit()">
+        {% for e in empresas_disponiveis %}
+          <option value="{% url 'empresas:selecionar' e.pk %}" {% if empresa_ativa and e.pk == empresa_ativa.pk %}selected{% endif %}>{{ e }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% endif %}
+    {% with u=request.resolver_match.namespace %}
+    <nav>
+      <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}ativo{% endif %}">Início</a>
+      <div class="secao">Cadastros</div>
+      <a href="{% url 'empresas:lista' %}" class="{% if u == 'empresas' %}ativo{% endif %}">Empresas</a>
+      <a href="{% url 'pessoal:lista' %}" class="{% if u == 'pessoal' and request.resolver_match.url_name != 'cargos' %}ativo{% endif %}">Funcionários</a>
+      <a href="{% url 'pessoal:cargos' %}" class="{% if request.resolver_match.url_name == 'cargos' %}ativo{% endif %}">Cargos</a>
+      <a href="{% url 'folha:rubricas' %}" class="{% if request.resolver_match.url_name == 'rubricas' %}ativo{% endif %}">Rubricas</a>
+      <div class="secao">Folha</div>
+      <a href="{% url 'folha:competencias' %}" class="{% if u == 'folha' and request.resolver_match.url_name != 'rubricas' %}ativo{% endif %}">Competências</a>
+      <div class="secao">Governo</div>
+      <a href="{% url 'esocial:eventos' %}" class="{% if u == 'esocial' and request.resolver_match.url_name != 'guia' %}ativo{% endif %}">eSocial</a>
+      <a href="{% url 'esocial:guia' %}" class="{% if request.resolver_match.url_name == 'guia' %}ativo{% endif %}">DCTFWeb e FGTS</a>
+      <div class="secao">Conta</div>
+      {% if user.is_staff %}<a href="{% url 'admin:index' %}">Administração</a>{% endif %}
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn pequeno" style="margin:6px 10px">Sair ({{ user.username }})</button></form>
+    </nav>
+    {% endwith %}
+  </aside>
+  <main class="main">
+    {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% else %}
+  <main class="main">{% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}{% block anon %}{% endblock %}</main>
+{% endif %}
+</body>
+</html>

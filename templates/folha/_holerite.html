@@ -1,0 +1,21 @@
+<div class="holerite">
+  <div class="cab">
+    <div><strong>{{ h.competencia.empresa.razao_social }}</strong><br>CNPJ {{ h.competencia.empresa.nr_insc_formatado }}</div>
+    <div class="direita"><strong>Recibo de pagamento de salário</strong><br>Competência {{ h.competencia }}</div>
+  </div>
+  <p>{{ h.funcionario.matricula }} — <strong>{{ h.funcionario.nome }}</strong> · CPF {{ h.funcionario.cpf_formatado }}<br>
+  {{ h.funcionario.cargo.nome }} (CBO {{ h.funcionario.cargo.cbo }}) · Admissão {{ h.funcionario.data_admissao|date:"d/m/Y" }}</p>
+  <table>
+    <thead><tr><th>Cód.</th><th>Descrição</th><th class="num">Ref.</th><th class="num">Proventos</th><th class="num">Descontos</th></tr></thead>
+    <tbody>
+      {% for i in proventos %}<tr><td>{{ i.rubrica.codigo }}</td><td>{{ i.rubrica.descricao }}</td><td class="num">{{ i.referencia|default_if_none:"" }}</td><td class="num">{{ i.valor|floatformat:"2g" }}</td><td></td></tr>{% endfor %}
+      {% for i in descontos %}<tr><td>{{ i.rubrica.codigo }}</td><td>{{ i.rubrica.descricao }}</td><td class="num">{{ i.referencia|default_if_none:"" }}</td><td></td><td class="num">{{ i.valor|floatformat:"2g" }}</td></tr>{% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><th colspan="3" class="direita">Totais</th><th class="num">{{ h.total_proventos|floatformat:"2g" }}</th><th class="num">{{ h.total_descontos|floatformat:"2g" }}</th></tr>
+      <tr><th colspan="4" class="direita">Valor líquido</th><th class="num">R$ {{ h.liquido|floatformat:"2g" }}</th></tr>
+    </tfoot>
+  </table>
+  <p class="muted" style="font-size:12px">Salário-base {{ h.salario_contratual|floatformat:"2g" }} · Base INSS {{ h.base_inss|floatformat:"2g" }} · Base FGTS {{ h.base_fgts|floatformat:"2g" }} · FGTS do mês {{ h.valor_fgts|floatformat:"2g" }} · Base IRRF {{ h.base_irrf|floatformat:"2g" }}{% if h.reducao_irrf %} · Redução IRRF (Lei 15.270/2025) {{ h.reducao_irrf|floatformat:"2g" }}{% endif %}</p>
+  <p style="margin-top:28px">Declaro ter recebido a importância líquida discriminada neste recibo.<br><br>____/____/______ &nbsp;&nbsp;&nbsp; ______________________________________ Assinatura</p>
+</div>

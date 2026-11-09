@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Início{% endblock %}
+{% block content %}
+<div class="topo"><h1>{% if empresa_ativa %}{{ empresa_ativa.razao_social }}{% else %}Bem-vindo{% endif %}</h1></div>
+{% if not empresa_ativa %}
+  <div class="card"><p>Nenhuma empresa cadastrada.</p><a class="btn primario" href="{% url 'empresas:nova' %}">Cadastrar empresa</a></div>
+{% else %}
+<div class="grid">
+  <div class="card kpi"><div class="valor">{{ ativos }}</div><div class="rotulo">funcionários ativos</div></div>
+  <div class="card kpi"><div class="valor">{{ competencia|default:"—" }}</div><div class="rotulo">última competência {% if competencia %}<span class="tag {{ competencia.status }}">{{ competencia.get_status_display }}</span>{% endif %}</div></div>
+  <div class="card kpi"><div class="valor">{{ pendentes }}</div><div class="rotulo">eventos eSocial a enviar</div></div>
+  <div class="card kpi"><div class="valor">{{ rejeitados }}</div><div class="rotulo">eventos com erro/rejeitados</div></div>
+</div>
+<div class="card">
+  <h2>Roteiro mensal</h2>
+  <ol class="passos">
+    <li class="{% if empresa_ativa.tem_certificado %}feito{% endif %}">Enviar o certificado digital A1 da empresa (ou do escritório procurador). <a href="{% url 'empresas:certificado' empresa_ativa.pk %}">Certificado</a></li>
+    <li class="{% if iniciais_enviados %}feito{% endif %}">Gerar e transmitir os eventos iniciais (S-1000, S-1005, S-1010, S-1020) — só uma vez. <a href="{% url 'esocial:eventos' %}">eSocial</a></li>
+    <li class="{% if ativos and not sem_admissao %}feito{% endif %}">Cadastrar funcionários e gerar o S-2200 de cada admissão (até o dia anterior ao início do trabalho). {% if sem_admissao %}<span class="tag pendente">{{ sem_admissao }} sem S-2200</span>{% endif %}</li>
+    <li>Abrir a competência, lançar horas extras/faltas e calcular a folha. <a href="{% url 'folha:competencias' %}">Competências</a></li>
+    <li>Conferir os holerites e fechar a competência (gera S-1200, S-1210 e S-1299).</li>
+    <li>Transmitir ao eSocial e consultar o retorno. {% if aguardando %}<span class="tag enviado">{{ aguardando }} lote(s) aguardando</span>{% endif %}</li>
+    <li>Emitir o DARF na DCTFWeb (e-CAC) e a guia do FGTS Digital — ambos são montados a partir do eSocial. <a href="{% url 'esocial:guia' %}">Como fazer</a></li>
+  </ol>
+</div>
+{% if empresa_ativa.ambiente_esocial == 2 %}<div class="msg warning">Esta empresa está no ambiente de <strong>produção restrita</strong> (testes). Os envios não têm validade jurídica. Mude para Produção no cadastro da empresa quando estiver tudo conferido.</div>{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Entrar{% endblock %}
+{% block anon %}
+<div class="card login">
+  <h1 style="margin-bottom:12px">FolhaWeb</h1>
+  <form method="post">
+    {% csrf_token %}
+    {% if form.errors %}<p class="erros">Usuário ou senha incorretos.</p>{% endif %}
+    <div class="campo"><label for="id_username">Usuário</label>{{ form.username }}</div>
+    <div class="campo" style="margin-top:10px"><label for="id_password">Senha</label>{{ form.password }}</div>
+    <p><button class="btn primario" type="submit">Entrar</button></p>
+  </form>
+</div>
+{% endblock %}

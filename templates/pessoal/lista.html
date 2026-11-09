@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Funcionários{% endblock %}
+{% block content %}
+<div class="topo"><h1>Funcionários</h1><a class="btn primario" href="{% url 'pessoal:novo' %}">Novo funcionário</a></div>
+<form method="get" class="acoes" style="margin-bottom:12px">
+  <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Nome, CPF ou matrícula" class="btn" style="min-width:240px">
+  <select name="situacao" class="btn">
+    {% with s=request.GET.situacao|default:"ativos" %}
+    <option value="ativos" {% if s == "ativos" %}selected{% endif %}>Ativos</option>
+    <option value="desligados" {% if s == "desligados" %}selected{% endif %}>Desligados</option>
+    <option value="todos" {% if s == "todos" %}selected{% endif %}>Todos</option>
+    {% endwith %}
+  </select>
+  <button class="btn">Filtrar</button>
+</form>
+<div class="tabela"><table>
+  <thead><tr><th>Matr.</th><th>Nome</th><th>CPF</th><th>Cargo</th><th>Admissão</th><th class="num">Salário</th><th>Situação</th></tr></thead>
+  <tbody>
+  {% for f in object_list %}
+    <tr>
+      <td>{{ f.matricula }}</td>
+      <td><a href="{% url 'pessoal:detalhe' f.pk %}">{{ f.nome }}</a></td>
+      <td>{{ f.cpf_formatado }}</td>
+      <td>{{ f.cargo.nome }}</td>
+      <td>{{ f.data_admissao|date:"d/m/Y" }}</td>
+      <td class="num">{{ f.salario|floatformat:"2g" }}</td>
+      <td>{% if f.ativo %}<span class="tag aceito">ativo</span>{% else %}<span class="tag">desligado em {{ f.data_desligamento|date:"d/m/Y" }}</span>{% endif %}</td>
+    </tr>
+  {% empty %}<tr><td colspan="7" class="muted">Nenhum funcionário encontrado.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

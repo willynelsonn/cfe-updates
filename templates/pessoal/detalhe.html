@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ object.nome }}{% endblock %}
+{% block content %}
+{% with f=object %}
+<div class="topo">
+  <h1>{{ f.nome }} <span class="muted" style="font-weight:400">· matr. {{ f.matricula }}</span></h1>
+  <div class="acoes">
+    <a class="btn" href="{% url 'pessoal:editar' f.pk %}">Editar</a>
+    <form class="inline" method="post" action="{% url 'esocial:admissao' f.pk %}">{% csrf_token %}<button class="btn primario">Gerar S-2200 (admissão)</button></form>
+    {% if f.ativo %}<a class="btn perigo" href="{% url 'pessoal:desligar' f.pk %}">Desligar</a>
+    {% else %}<form class="inline" method="post" action="{% url 'esocial:desligamento' f.pk %}">{% csrf_token %}<button class="btn primario">Gerar S-2299 (desligamento)</button></form>{% endif %}
+  </div>
+</div>
+<div class="grid">
+  <div class="card">
+    <h2>Dados pessoais</h2>
+    <p>CPF {{ f.cpf_formatado }}<br>Nascimento {{ f.data_nascimento|date:"d/m/Y" }} · {{ f.get_sexo_display }}<br>
+    {{ f.logradouro }}, {{ f.numero }} {{ f.complemento }} – {{ f.bairro }} – {{ f.uf }} – CEP {{ f.cep }}<br>
+    {{ f.telefone }} {{ f.email }}</p>
+  </div>
+  <div class="card">
+    <h2>Contrato</h2>
+    <p>{{ f.cargo }}<br>Admissão {{ f.data_admissao|date:"d/m/Y" }} · categoria {{ f.categoria }}<br>
+    Salário R$ {{ f.salario|floatformat:"2g" }} · {{ f.horas_semanais|floatformat }}h semanais<br>
+    {% if f.periculosidade %}Periculosidade 30% · {% endif %}{% if f.insalubridade %}Insalubridade {{ f.insalubridade }}% · {% endif %}
+    {% if f.vale_transporte %}VT R$ {{ f.vale_transporte|floatformat:"2g" }}{% endif %}
+    {% if not f.ativo %}<br><strong>Desligado em {{ f.data_desligamento|date:"d/m/Y" }}</strong> ({{ f.get_motivo_desligamento_display }}){% endif %}</p>
+  </div>
+</div>
+<div class="card">
+  <div class="topo" style="margin-bottom:6px"><h2>Dependentes</h2><a class="btn pequeno" href="{% url 'pessoal:dependente_novo' f.pk %}">Adicionar</a></div>
+  <div class="tabela"><table>
+    <thead><tr><th>Nome</th><th>Parentesco</th><th>Nascimento</th><th>IRRF</th><th>Sal.-família</th><th></th></tr></thead>
+    <tbody>{% for d in f.dependentes.all %}
+      <tr><td>{{ d.nome }}</td><td>{{ d.get_tipo_display }}</td><td>{{ d.data_nascimento|date:"d/m/Y" }}</td>
+      <td>{{ d.dependente_irrf|yesno:"sim,não" }}</td><td>{{ d.dependente_salario_familia|yesno:"sim,não" }}</td>
+      <td><form class="inline" method="post" action="{% url 'pessoal:dependente_excluir' d.pk %}">{% csrf_token %}<button class="btn pequeno perigo">Excluir</button></form></td></tr>
+    {% empty %}<tr><td colspan="6" class="muted">Sem dependentes.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+<div class="grid">
+  <div class="card">
+    <h2>Holerites</h2>
+    <ul>{% for h in holerites %}<li><a href="{% url 'folha:holerite' h.pk %}">{{ h.competencia }}</a> — líquido R$ {{ h.liquido|floatformat:"2g" }}</li>{% empty %}<li class="muted">Nenhum.</li>{% endfor %}</ul>
+  </div>
+  <div class="card">
+    <h2>Eventos eSocial</h2>
+    <ul>{% for e in eventos %}<li><a href="{% url 'esocial:evento' e.pk %}">{{ e.tipo }}</a> {{ e.descricao }} <span class="tag {{ e.status }}">{{ e.get_status_display }}</span></li>{% empty %}<li class="muted">Nenhum.</li>{% endfor %}</ul>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}
