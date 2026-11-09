@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Entrar{% endblock %}
+{% block anon %}
+<div class="tela-login">
+  <div class="lado">
+    <div class="brand" style="color:#fff"><span class="logo" style="background:#fff;color:#1c5cab">FW</span><span>FolhaWeb</span></div>
+    <div>
+      <h2>Folha de pagamento, eSocial e guias — no automático e dentro da lei.</h2>
+      <ul>
+        <li>✓ Folha, férias, 13º e rescisão calculados com as regras de 2026</li>
+        <li>✓ Envio ao eSocial na ordem certa, sem planilha</li>
+        <li>✓ DCTFWeb e FGTS Digital prontos para pagar</li>
+        <li>✓ Alertas de prazo com a base legal</li>
+      </ul>
+    </div>
+    <small style="opacity:.7">Departamento pessoal para escritórios contábeis</small>
+  </div>
+  <div class="form">
+    <form method="post" class="caixa">
+      {% csrf_token %}
+      <h1 style="margin-bottom:6px">Entrar</h1>
+      <p class="muted" style="margin-bottom:20px">Use o usuário e a senha fornecidos pelo escritório.</p>
+      {% if form.errors %}<div class="msg error">Usuário ou senha incorretos.</div>{% endif %}
+      <div class="campo"><label for="id_username">Usuário</label>{{ form.username }}</div>
+      <div class="campo" style="margin-top:12px"><label for="id_password">Senha</label>{{ form.password }}</div>
+      <button class="btn primario grande" type="submit" style="width:100%;margin-top:18px">Entrar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

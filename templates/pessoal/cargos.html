@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Cargos{% endblock %}
+{% block content %}
+<div class="topo"><h1>Cargos</h1></div>
+<form method="post" class="card">
+  {% csrf_token %}
+  <h2>Novo cargo</h2>
+  {{ form.non_field_errors }}
+  <div class="form-grid">
+    {% for campo in form %}<div class="campo"><label for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}{% if campo.help_text %}<div class="ajuda">{{ campo.help_text }}</div>{% endif %}{% for e in campo.errors %}<div class="erro">{{ e }}</div>{% endfor %}</div>{% endfor %}
+  </div>
+  <p><button class="btn primario">Adicionar</button></p>
+</form>
+<div class="tabela"><table>
+  <thead><tr><th>Cargo</th><th>CBO</th><th></th></tr></thead>
+  <tbody>{% for c in cargos %}<tr><td>{{ c.nome }}</td><td>{{ c.cbo }}</td><td><a class="btn pequeno" href="{% url 'pessoal:cargo_editar' c.pk %}">Editar</a></td></tr>
+  {% empty %}<tr><td colspan="3" class="muted">Nenhum cargo.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% load ui %}{% if alertas %}
+<div class="alertas{% if compacto %} compactos{% endif %}">
+  {% for a in alertas %}
+  <div class="alerta {{ a.nivel }}">
+    <span class="ic">{% if a.nivel == 'critico' %}{% icone "alerta" %}{% else %}{% icone "info" %}{% endif %}</span>
+    <div class="t" {% if compacto %}title="{{ a.detalhe }}"{% endif %}>{% if a.nivel == 'critico' %}<span class="sr-only">Urgente: </span>{% endif %}{{ a.titulo }}</div>
+    {% if a.acao_url %}<a class="btn pequeno" href="{{ a.acao_url }}">{{ a.acao_texto }}</a>{% endif %}
+    {% if compacto %}<div class="lei">{{ a.base_legal }}</div>{% else %}<div class="d">{{ a.detalhe }}</div>
+    <div class="lei">Base legal: {{ a.base_legal }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

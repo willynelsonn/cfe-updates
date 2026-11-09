@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Calcular rescisão{% endblock %}
+{% block content %}
+<div class="topo"><div><h1>Calcular rescisão</h1>
+  <div class="subtitulo">Escolha o funcionário e o motivo. O FolhaWeb aplica as verbas devidas em cada caso, calcula INSS, IRRF, FGTS e a multa, e envia o desligamento (S-2299) ao eSocial.</div></div></div>
+<form method="post" class="card" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="msg error">{% icone "alerta" %}<div>{{ form.non_field_errors }}</div></div>{% endif %}
+  <fieldset class="secao"><legend>Quem e por quê</legend>
+    <div class="form-grid">
+      {% for campo in form %}{% if campo.name in "funcionario motivo tipo_aviso" %}{% include "_campo.html" %}{% endif %}{% endfor %}
+    </div>
+  </fieldset>
+  <fieldset class="secao"><legend>Datas</legend>
+    <div class="form-grid">
+      {% for campo in form %}{% if campo.name in "data_aviso data_desligamento data_pagamento" %}{% include "_campo.html" %}{% endif %}{% endfor %}
+    </div>
+  </fieldset>
+  <fieldset class="secao"><legend>FGTS e férias</legend>
+    <div class="form-grid">
+      {% for campo in form %}{% if campo.name in "saldo_fgts faltas_periodo_ferias" %}{% include "_campo.html" %}{% endif %}{% endfor %}
+    </div>
+  </fieldset>
+  <div class="rodape-form">
+    <button class="btn primario grande" data-ocupado="Calculando">{% icone "calculadora" %} Calcular e enviar ao eSocial</button>
+    <span class="dica">Você confere o resultado na próxima tela e pode cancelar se ainda não tiver sido enviado.</span>
+  </div>
+</form>
+<div class="card">
+  <h2>O que cada motivo paga</h2>
+  <div class="tabela" style="box-shadow:none"><table>
+    <thead><tr><th>Motivo</th><th>Aviso prévio</th><th>13º e férias proporcionais</th><th>Multa do FGTS</th><th>Saque do FGTS</th></tr></thead>
+    <tbody>{% for cod, r in regras.items %}<tr><td>{{ r.descricao }}</td>
+      <td>{% if r.aviso == "proporcional" %}{% if r.fator_aviso < 1 %}Metade do proporcional{% else %}30 dias + 3 por ano{% endif %}{% elif r.aviso == "30" %}30 dias (do empregado){% else %}—{% endif %}</td>
+      <td>{% if not r.decimo %}Não{% elif r.decimo < 1 %}Metade{% else %}Sim{% endif %}</td>
+      <td>{% if r.multa_fgts %}{{ r.multa_fgts|floatformat:0 }}%{% else %}—{% endif %}</td><td>{{ r.saque_fgts }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="dica">Férias vencidas são sempre devidas (inclusive na justa causa), em dobro se o prazo de concessão passou. Base: CLT arts. 146, 477, 479, 480, 484-A e 487; Súmulas 14, 171 e 261 do TST.</p>
+</div>
+<script>
+  document.getElementById("id_funcionario").addEventListener("change", function () {
+    if (this.value) window.location = "?funcionario=" + this.value;
+  });
+</script>
+{% endblock %}

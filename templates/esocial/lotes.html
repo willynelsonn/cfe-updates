@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Lotes eSocial{% endblock %}
+{% block content %}
+<div class="topo"><h1>Lotes enviados</h1><a class="btn" href="{% url 'esocial:eventos' %}">Eventos</a></div>
+<div class="tabela"><table>
+  <thead><tr><th>#</th><th>Grupo</th><th>Ambiente</th><th>Protocolo</th><th>Status</th><th>Resposta</th><th>Enviado</th><th>Consultado</th></tr></thead>
+  <tbody>{% for l in object_list %}
+    <tr><td>{{ l.pk }}</td><td>{{ l.grupo }}</td><td>{% if l.ambiente == 1 %}Produção{% else %}Restrita{% endif %}</td><td>{{ l.protocolo }}</td>
+    <td><span class="tag {{ l.status }}">{{ l.get_status_display }}</span></td><td>{{ l.cd_resposta }} {{ l.desc_resposta|truncatechars:120 }}</td>
+    <td>{{ l.criado_em|date:"d/m/Y H:i" }}</td><td>{{ l.consultado_em|date:"d/m/Y H:i"|default:"—" }}</td></tr>
+  {% empty %}<tr><td colspan="8" class="muted">Nenhum lote enviado.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

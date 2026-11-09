@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Férias {{ fe.funcionario.nome }}{% endblock %}
+{% block content %}
+<div class="topo">
+  <h1>Férias de {{ fe.funcionario.nome }} <span class="tag {% if fe.status == 'calculada' %}aceito{% endif %}">{{ fe.get_status_display }}</span></h1>
+  <div class="acoes">
+    <a class="btn" href="{% url 'folha:ferias_documento' fe.pk 'aviso' %}" target="_blank" title="Aviso que o funcionário assina com 30 dias de antecedência (CLT art. 135)">Imprimir aviso</a>
+    <a class="btn" href="{% url 'folha:ferias_documento' fe.pk 'recibo' %}" target="_blank" title="Recibo que o funcionário assina ao receber (CLT art. 145)">Imprimir recibo</a>
+    {% if fe.status != 'cancelada' %}<form class="inline" method="post" action="{% url 'folha:ferias_cancelar' fe.pk %}" data-confirmar="Cancelar estas férias?">{% csrf_token %}<button class="btn perigo" title="Cancela a programação (só antes de a folha ser enviada)">Cancelar férias</button></form>{% endif %}
+  </div>
+</div>
+{% for n, t, d, b in problemas %}<div class="alerta {{ n }}" style="margin-bottom:8px"><div class="t">{{ t|capfirst }}</div><div class="d">{{ d }}</div><div class="lei">Base legal: {{ b }}</div></div>{% endfor %}
+<div class="grid">
+  <div class="card">
+    <h2>Período</h2>
+    <p>Aquisitivo: {{ fe.aquisitivo_inicio|date:"d/m/Y" }} a {{ fe.aquisitivo_fim|date:"d/m/Y" }}<br>
+    Gozo: <strong>{{ fe.inicio|date:"d/m/Y" }} a {{ fe.fim|date:"d/m/Y" }}</strong> ({{ fe.dias }} dias) · retorno {{ fe.retorno|date:"d/m/Y" }}<br>
+    Dias vendidos (abono): {{ fe.dias_abono }}<br>
+    Aviso: {{ fe.data_aviso|date:"d/m/Y" }} · Pagamento: <strong>{{ fe.data_pagamento|date:"d/m/Y" }}</strong></p>
+  </div>
+  <div class="card">
+    <h2>Recibo</h2>
+    <table>
+      <tr><td>Férias ({{ fe.dias }} dias)</td><td class="num">{{ fe.valor_ferias|floatformat:"2g" }}</td></tr>
+      <tr><td>1/3 constitucional</td><td class="num">{{ fe.valor_terco|floatformat:"2g" }}</td></tr>
+      {% if fe.dias_abono %}<tr><td>Abono pecuniário + 1/3 ({{ fe.dias_abono }} dias)</td><td class="num">{{ fe.valor_abono|floatformat:"2g" }}</td></tr>{% endif %}
+      <tr><td>(−) INSS sobre férias</td><td class="num">{{ fe.valor_inss|floatformat:"2g" }}</td></tr>
+      <tr><td>(−) IRRF sobre férias</td><td class="num">{{ fe.valor_irrf|floatformat:"2g" }}</td></tr>
+      <tr><td><strong>Líquido a pagar</strong></td><td class="num"><strong>{{ fe.liquido|floatformat:"2g" }}</strong></td></tr>
+    </table>
+    <p class="muted">Remuneração-base R$ {{ fe.remuneracao_base|floatformat:"2g" }}{% if fe.media_variaveis %} + média de variáveis R$ {{ fe.media_variaveis|floatformat:"2g" }}{% endif %}. O INSS é retido no recibo e acertado na folha do mês do gozo; o FGTS das férias entra na folha desse mês.</p>
+  </div>
+</div>
+<div class="card">
+  <h2>Divisão por mês (para a folha e o eSocial)</h2>
+  <ul>{% for p in fe.parcelas %}<li>{{ p.mes|stringformat:"02d" }}/{{ p.ano|stringformat:"d" }}: {{ p.dias }} dias — férias R$ {{ p.ferias }} + 1/3 R$ {{ p.terco }}</li>{% endfor %}</ul>
+</div>
+<div class="card">
+  <h2>eSocial</h2>
+  <ul>{% for e in eventos %}<li><a href="{% url 'esocial:evento' e.pk %}">{{ e.tipo }}</a> {{ e.descricao }} <span class="tag {{ e.status }}">{{ e.get_status_display }}</span></li>{% empty %}<li class="muted">Nenhum evento (envio automático desligado ou erro). </li>{% endfor %}</ul>
+</div>
+{% endblock %}

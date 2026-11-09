@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ object.nome }}{% endblock %}
+{% block content %}
+{% with f=object %}
+<div class="topo">
+  <div class="pessoa" style="gap:14px">
+    <span class="avatar" style="width:48px;height:48px;font-size:16px">{{ f.nome|iniciais }}</span>
+    <div><h1>{{ f.nome }} {% if f.ativo %}<span class="tag aceito">Ativo</span>{% else %}<span class="tag cancelada">Desligado em {{ f.data_desligamento|date:"d/m/Y" }}</span>{% endif %}</h1>
+    <div class="subtitulo">{{ f.cargo.nome }} · matrícula {{ f.matricula }} · CPF {{ f.cpf_formatado }}</div></div>
+  </div>
+  <div class="acoes">
+    <a class="btn" href="{% url 'pessoal:editar' f.pk %}" title="Altera dados pessoais e do contrato">Editar cadastro</a>
+    {% if f.ativo %}
+      <a class="btn" href="{% url 'folha:ferias_nova' %}?funcionario={{ f.pk }}" title="Programa, calcula e envia as férias">{% icone "ferias" %} Programar férias</a>
+      <a class="btn perigo" href="{% url 'folha:rescisao_nova' %}?funcionario={{ f.pk }}" title="Calcula as verbas rescisórias e envia o desligamento">{% icone "saida" %} Calcular rescisão</a>
+    {% endif %}
+  </div>
+</div>
+
+<section class="kpis">
+  <div class="kpi"><div class="rotulo">Salário</div><div class="valor">{{ f.salario|moeda }}</div><div class="rodape">{{ f.horas_semanais|floatformat }}h semanais · categoria {{ f.categoria }}</div></div>
+  <div class="kpi"><div class="rotulo">Custo mensal para a empresa</div><div class="valor">{{ custo.total|moeda }}</div><div class="rodape">{{ custo.multiplicador|numero }}× o salário · {{ custo.anual|compacto }}/ano</div></div>
+  <div class="kpi"><div class="rotulo">Tempo de casa</div><div class="valor">{{ tempo_casa.0 }}a {{ tempo_casa.1 }}m</div><div class="rodape">admitido em {{ f.data_admissao|date:"d/m/Y" }}</div></div>
+  <div class="kpi"><div class="rotulo">Dependentes</div><div class="valor">{{ f.dependentes.count }}</div><div class="rodape">IRRF e salário-família</div></div>
+</section>
+
+<div class="cols-2">
+  <div>
+    <section class="card">
+      <h2>Dados pessoais e contrato</h2>
+      <div class="form-grid" style="gap:10px 24px">
+        <div><div class="dica">Nascimento</div>{{ f.data_nascimento|date:"d/m/Y" }} · {{ f.get_sexo_display }}</div>
+        <div><div class="dica">Escolaridade</div>{{ f.get_grau_instrucao_display }}</div>
+        <div><div class="dica">Endereço</div>{{ f.logradouro }}, {{ f.numero }} {{ f.complemento }} — {{ f.bairro }} — {{ f.uf }}</div>
+        <div><div class="dica">Contato</div>{{ f.telefone|default:"—" }} · {{ f.email|default:"—" }}</div>
+        <div><div class="dica">Contrato</div>{{ f.get_tipo_contrato_display }}{% if f.data_termino %} até {{ f.data_termino|date:"d/m/Y" }}{% endif %}</div>
+        <div><div class="dica">Adicionais</div>{% if f.periculosidade %}Periculosidade 30% {% endif %}{% if f.insalubridade %}Insalubridade {{ f.insalubridade }}%{% endif %}{% if not f.periculosidade and not f.insalubridade %}Nenhum{% endif %}</div>
+        <div><div class="dica">Jornada</div>{{ f.descricao_jornada }}</div>
+        <div><div class="dica">Benefícios</div>VT {{ f.vale_transporte|moeda }} · outros {{ f.beneficios_mensais|moeda }}</div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-cab"><h2>Dependentes</h2><a class="btn pequeno" href="{% url 'pessoal:dependente_novo' f.pk %}">{% icone "mais" "sm" %} Adicionar</a></div>
+      <table>
+        <thead><tr><th>Nome</th><th>Parentesco</th><th>Nascimento</th><th>IRRF</th><th>Sal.-família</th><th></th></tr></thead>
+        <tbody>{% for d in f.dependentes.all %}
+          <tr><td>{{ d.nome }}</td><td>{{ d.get_tipo_display|truncatechars:28 }}</td><td>{{ d.data_nascimento|date:"d/m/Y" }}</td>
+          <td>{{ d.dependente_irrf|yesno:"Sim,Não" }}</td><td>{{ d.dependente_salario_familia|yesno:"Sim,Não" }}</td>
+          <td class="direita"><form class="inline" method="post" action="{% url 'pessoal:dependente_excluir' d.pk %}" data-confirmar="Excluir {{ d.nome }}?">{% csrf_token %}<button class="btn pequeno fantasma perigo">Excluir</button></form></td></tr>
+        {% empty %}<tr><td colspan="6" class="muted">Sem dependentes.</td></tr>{% endfor %}</tbody>
+      </table>
+    </section>
+    <section class="card">
+      <h2>Histórico</h2>
+      <table>
+        <thead><tr><th>Documento</th><th>Período</th><th class="num">Valor líquido</th></tr></thead>
+        <tbody>
+          {% for r in rescisoes %}<tr><td><a href="{% url 'folha:rescisao_detalhe' r.pk %}">Rescisão</a></td><td>{{ r.data_desligamento|date:"d/m/Y" }}</td><td class="num">{{ r.liquido|moeda }}</td></tr>{% endfor %}
+          {% for fe in ferias %}<tr><td><a href="{% url 'folha:ferias_detalhe' fe.pk %}">Férias</a></td><td>{{ fe.inicio|date:"d/m/Y" }} a {{ fe.fim|date:"d/m/Y" }}</td><td class="num">{{ fe.liquido|moeda }}</td></tr>{% endfor %}
+          {% for h in holerites %}<tr><td><a href="{% url 'folha:holerite' h.pk %}">{{ h.get_tipo_display }}</a></td><td>{{ h.competencia }}</td><td class="num">{{ h.liquido|moeda }}</td></tr>{% endfor %}
+          {% if not holerites and not ferias and not rescisoes %}<tr><td colspan="3" class="muted">Nenhum documento ainda.</td></tr>{% endif %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+  <div>
+    <section class="card">
+      <div class="card-cab"><div><h2>Quanto custa por mês</h2><span class="dica">Estimativa com a tributação da empresa</span></div></div>
+      {% include "folha/_custo_detalhe.html" %}
+    </section>
+    <section class="card">
+      <h2>eSocial</h2>
+      {% for e in eventos %}<p style="display:flex;gap:8px;justify-content:space-between"><a href="{% url 'esocial:evento' e.pk %}">{{ e.tipo }} · {{ e.descricao|truncatechars:34 }}</a><span class="tag {{ e.status }}">{{ e.get_status_display }}</span></p>{% empty %}<p class="muted">Nenhum evento.</p>{% endfor %}
+      {% if not f.esocial_ja_cadastrado %}<form method="post" action="{% url 'esocial:admissao' f.pk %}" data-confirmar="Gerar novamente a admissão (S-2200) de {{ f.nome }}?">{% csrf_token %}<button class="btn pequeno" title="A admissão é enviada sozinha ao cadastrar. Use só se precisar gerar de novo.">Reenviar admissão</button></form>{% endif %}
+    </section>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

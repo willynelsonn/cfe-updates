@@ -1,0 +1,6 @@
+Django>=5.2,<6
+lxml>=5
+cryptography>=42
+requests>=2.31
+# Opcional, para usar PostgreSQL em produção:
+# psycopg[binary]>=3.2

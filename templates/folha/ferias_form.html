@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Programar férias{% endblock %}
+{% block content %}
+<div class="topo"><h1>Programar férias</h1></div>
+<div class="explica">
+  Escolha o funcionário — o sistema sugere o período aquisitivo pendente. Informe o início e os dias de gozo.
+  O pagamento e o aviso são sugeridos automaticamente (2 dias e 30 dias antes do início).
+  Antes de salvar, o FolhaWeb confere: dias de direito pelas faltas (art. 130), venda de até 1/3 (art. 143),
+  fracionamento em até 3 períodos com um de 14+ dias e nenhum menor que 5 (art. 134), início fora dos 2 dias que antecedem o repouso (art. 134 §3º) e o período concessivo (art. 137).
+</div>
+<form method="post" class="card">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="msg error"><strong>Não foi possível salvar porque a CLT não permite:</strong><ul>{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+  <div class="form-grid">
+    {% for campo in form %}
+      <div class="campo">
+        <label for="{{ campo.id_for_label }}">{{ campo.label|capfirst }}{% if campo.field.required %} *{% endif %}</label>
+        {{ campo }}
+        {% if campo.help_text %}<div class="ajuda">{{ campo.help_text }}</div>{% endif %}
+        {% for e in campo.errors %}<div class="erro">{{ e }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+  <p class="acoes" style="margin-top:16px">
+    <button class="btn primario" data-ocupado="Calculando">Calcular férias e enviar aviso ao eSocial</button>
+    <span class="dica">Calcula o recibo (férias + 1/3 + abono − IRRF) e coloca o S-2230 na fila do eSocial.</span>
+  </p>
+</form>
+<script>
+  // Ao trocar o funcionário, recarrega com o período aquisitivo sugerido.
+  document.getElementById("id_funcionario").addEventListener("change", function () {
+    if (this.value) window.location = "?funcionario=" + this.value;
+  });
+</script>
+{% endblock %}

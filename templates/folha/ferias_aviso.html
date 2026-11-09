@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Aviso de férias{% endblock %}
+{% block content %}
+<div class="topo nao-imprimir"><h1>Aviso de férias</h1><button class="btn primario" onclick="window.print()">Imprimir</button></div>
+<div class="doc">
+  <h2 style="text-align:center">AVISO DE FÉRIAS</h2>
+  <p><strong>{{ fe.funcionario.empresa.razao_social }}</strong> — CNPJ {{ fe.funcionario.empresa.nr_insc_formatado }}</p>
+  <p>Ao(À) Sr(a). <strong>{{ fe.funcionario.nome }}</strong>, CPF {{ fe.funcionario.cpf_formatado }}, {{ fe.funcionario.cargo.nome }}.</p>
+  <p>Nos termos do art. 135 da CLT, comunicamos que suas férias referentes ao período aquisitivo de
+  {{ fe.aquisitivo_inicio|date:"d/m/Y" }} a {{ fe.aquisitivo_fim|date:"d/m/Y" }} serão gozadas de
+  <strong>{{ fe.inicio|date:"d/m/Y" }} a {{ fe.fim|date:"d/m/Y" }}</strong> ({{ fe.dias }} dias), devendo retornar ao trabalho em {{ fe.retorno|date:"d/m/Y" }}.
+  {% if fe.dias_abono %}A pedido, {{ fe.dias_abono }} dia(s) serão convertidos em abono pecuniário (art. 143 da CLT).{% endif %}</p>
+  <p>O pagamento será feito até {{ fe.data_pagamento|date:"d/m/Y" }} (art. 145 da CLT).</p>
+  <p style="margin-top:40px">{{ fe.funcionario.empresa.municipio|default:"________________" }}, {{ fe.data_aviso|date:"d \d\e F \d\e Y" }}.</p>
+  <p style="margin-top:50px">_______________________________ Empregador &nbsp;&nbsp;&nbsp; _______________________________ Ciente do empregado</p>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Recibo de férias{% endblock %}
+{% block content %}
+<div class="topo nao-imprimir"><h1>Recibo de férias</h1><button class="btn primario" onclick="window.print()">Imprimir</button></div>
+<div class="doc">
+  <h2 style="text-align:center">RECIBO DE FÉRIAS</h2>
+  <p><strong>{{ fe.funcionario.empresa.razao_social }}</strong> — CNPJ {{ fe.funcionario.empresa.nr_insc_formatado }}<br>
+  Empregado: <strong>{{ fe.funcionario.nome }}</strong> · CPF {{ fe.funcionario.cpf_formatado }} · Matrícula {{ fe.funcionario.matricula }}<br>
+  Período aquisitivo: {{ fe.aquisitivo_inicio|date:"d/m/Y" }} a {{ fe.aquisitivo_fim|date:"d/m/Y" }} · Gozo: {{ fe.inicio|date:"d/m/Y" }} a {{ fe.fim|date:"d/m/Y" }}</p>
+  <table>
+    <tr><th>Descrição</th><th class="num">Valor (R$)</th></tr>
+    <tr><td>Férias — {{ fe.dias }} dias</td><td class="num">{{ fe.valor_ferias|floatformat:"2g" }}</td></tr>
+    <tr><td>1/3 constitucional (CF art. 7º, XVII)</td><td class="num">{{ fe.valor_terco|floatformat:"2g" }}</td></tr>
+    {% if fe.dias_abono %}<tr><td>Abono pecuniário — {{ fe.dias_abono }} dias, com 1/3</td><td class="num">{{ fe.valor_abono|floatformat:"2g" }}</td></tr>{% endif %}
+    <tr><td>(−) INSS</td><td class="num">{{ fe.valor_inss|floatformat:"2g" }}</td></tr>
+    <tr><td>(−) IRRF</td><td class="num">{{ fe.valor_irrf|floatformat:"2g" }}</td></tr>
+    <tr><th>Líquido</th><th class="num">{{ fe.liquido|floatformat:"2g" }}</th></tr>
+  </table>
+  <p>Recebi a importância líquida acima, referente às minhas férias, nos termos do art. 145 da CLT.</p>
+  <p style="margin-top:50px">____/____/______ &nbsp;&nbsp;&nbsp; _______________________________ {{ fe.funcionario.nome }}</p>
+</div>
+{% endblock %}

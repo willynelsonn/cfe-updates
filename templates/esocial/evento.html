@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ object.tipo }}{% endblock %}
+{% block content %}
+{% with e=object %}
+<div class="topo">
+  <h1>{{ e.tipo }} — {{ e.descricao }} <span class="tag {{ e.status }}">{{ e.get_status_display }}</span></h1>
+  <div class="acoes">
+    <a class="btn" href="{% url 'esocial:xml' e.pk %}">Baixar XML</a>
+    {% if e.corrigivel %}
+      <form class="inline" method="post" action="{% url 'esocial:regerar' e.pk %}">{% csrf_token %}<button class="btn primario" title="Use depois de corrigir o cadastro (funcionário, empresa ou rubrica): cria o evento de novo com os dados atuais">Gerar de novo com os dados corrigidos</button></form>
+      <form class="inline" method="post" action="{% url 'esocial:reenviar' e.pk %}">{% csrf_token %}<button class="btn" title="Para falhas de comunicação: reenvia o mesmo XML">Reenviar sem alterar</button></form>
+    {% endif %}
+  </div>
+</div>
+<div class="card">
+  <p>ID {{ e.id_evento }}<br>{% if e.recibo %}Recibo <strong>{{ e.recibo }}</strong><br>{% endif %}
+  {% if e.lote %}Lote protocolo {{ e.lote.protocolo|default:"—" }} ({{ e.lote.get_status_display }}){% endif %}</p>
+  {% if e.mensagens %}<h2>Mensagens</h2><ul>{% for m in e.mensagens %}<li>{{ m }}</li>{% endfor %}</ul>{% endif %}
+  {% if e.corrigivel %}<p class="muted">Como resolver: leia a mensagem acima, corrija o cadastro indicado e clique em “Gerar de novo com os dados corrigidos”. O envio é automático.</p>{% endif %}
+  {% if e.depende %}<p class="muted">Depende de: {{ e.depende|join:", " }}</p>{% endif %}
+</div>
+<h2>XML {% if e.xml_assinado %}assinado{% else %}(ainda não assinado){% endif %}</h2>
+<pre class="xml">{{ e.xml_assinado|default:e.xml }}</pre>
+{% endwith %}
+{% endblock %}

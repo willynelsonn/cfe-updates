@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<div class="topo"><h1>{{ titulo }}</h1></div>
+{% if explicacao %}<div class="explica">{{ explicacao }}</div>{% endif %}
+{% if aviso %}<div class="msg warning"><div>{{ aviso }}</div></div>{% endif %}
+<form method="post" class="card" {% if multipart or form.is_multipart %}enctype="multipart/form-data"{% endif %}>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="form-grid">
+    {% for campo in form %}{% include "_campo.html" %}{% endfor %}
+  </div>
+  <div class="rodape-form">
+    <button class="btn primario" type="submit" data-ocupado="Salvando">{{ botao|default:"Salvar" }}</button>
+    <a class="btn fantasma" href="javascript:history.back()">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Folha {{ c }}{% endblock %}
+{% block recarregar %}{% if c.status == "fechada" and etapa < 4 %}1{% else %}0{% endif %}{% endblock %}
+{% block content %}
+<div class="topo">
+  <h1>{% if c.decimo_terceiro %}13º salário de {{ c.ano|stringformat:"d" }}{% else %}Folha de {{ c }}{% endif %} <span class="tag {{ c.status }}">{{ c.get_status_display }}</span></h1>
+  <div class="acoes">
+    {% if holerites %}<a class="btn" href="{% url 'folha:holerites_impressao' c.pk %}" target="_blank" title="Abre todos os holerites prontos para imprimir ou salvar em PDF">Imprimir holerites</a>{% endif %}
+    {% if c.editavel and not c.decimo_terceiro %}<a class="btn" href="{% url 'folha:competencia_editar' c.pk %}" title="Muda a data de pagamento, feriados ou a 1ª parcela do 13º">Alterar datas</a>{% endif %}
+  </div>
+</div>
+
+<ol class="stepper">
+  <li class="{% if etapa > 1 %}feito{% elif etapa == 1 %}atual{% endif %}"><strong>Lançar</strong>{% if c.decimo_terceiro %}nada a lançar{% else %}horas extras, faltas…{% endif %}</li>
+  <li class="{% if etapa > 2 %}feito{% elif etapa == 2 %}atual{% endif %}"><strong>Conferir</strong>holerites e totais</li>
+  <li class="{% if etapa > 3 %}feito{% elif etapa == 3 %}atual{% endif %}"><strong>eSocial</strong>{{ eventos_aceitos }} de {{ eventos|length }} aceitos</li>
+  <li class="{% if etapa == 4 %}atual{% endif %}"><strong>Guias</strong>DARF e FGTS</li>
+</ol>
+
+{% if not tabela_atualizada %}<div class="msg error">Não há tabelas de INSS/IRRF de {{ c.ano|stringformat:"d" }} cadastradas. O cálculo usa as de {{ tabela.ano }} — atualize o sistema antes de pagar.</div>{% endif %}
+<p class="muted">Pagamento em {{ c.data_pagamento|date:"d/m/Y" }}{% if c.data_adiantamento_13 %} · 1ª parcela do 13º em {{ c.data_adiantamento_13|date:"d/m/Y" }}{% endif %} · salário mínimo R$ {{ tabela.salario_minimo|floatformat:"2g" }} · teto do INSS R$ {{ tabela.teto_inss|floatformat:"2g" }}</p>
+
+{% if c.status != "fechada" %}
+<div class="acoes-grid">
+  <div class="acao destaque">
+    <h3>Apurar e enviar ao eSocial</h3>
+    <p>Faz tudo de uma vez: calcula a folha, fecha o mês e envia os eventos S-1200, S-1210 e S-1299. Se o cálculo gerar algum aviso, ele para antes de enviar para você conferir.</p>
+    <span class="requer">Precisa: certificado digital cadastrado e lançamentos do mês feitos.</span>
+    <form method="post" action="{% url 'folha:apurar' c.pk %}" data-confirmar="Calcular e enviar a folha de {{ c }} ao eSocial? Depois de enviada, a folha não pode ser recalculada.">
+      {% csrf_token %}<input type="hidden" name="transmitir_dctfweb" value="1">
+      <button class="btn primario grande" data-ocupado="Apurando">Apurar e enviar</button>
+    </form>
+  </div>
+  <div class="acao">
+    <h3>Só calcular</h3>
+    <p>Calcula e mostra os holerites sem enviar nada. Use para conferir com calma; pode recalcular quantas vezes quiser.</p>
+    <form method="post" action="{% url 'folha:calcular' c.pk %}">{% csrf_token %}<button class="btn" data-ocupado="Calculando">Calcular</button></form>
+  </div>
+  {% if c.status == "calculada" %}
+  <div class="acao">
+    <h3>Enviar ao eSocial</h3>
+    <p>Já conferiu? Fecha a folha e envia. A DCTFWeb é transmitida sozinha pela Receita depois do fechamento.</p>
+    <form method="post" action="{% url 'folha:fechar' c.pk %}" data-confirmar="Fechar a folha de {{ c }} e enviar ao eSocial?">
+      {% csrf_token %}<input type="hidden" name="transmitir_dctfweb" value="on">
+      <button class="btn" data-ocupado="Enviando">Fechar e enviar</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="acoes-grid">
+  <div class="acao {% if etapa == 4 %}destaque{% endif %}">
+    <h3>Gerar guias</h3>
+    <p>Prepara o DARF da DCTFWeb (INSS e IRRF) e a guia do FGTS Digital com valores e vencimentos. Ficam prontas quando o eSocial aceitar o fechamento.</p>
+    <form method="post" action="{% url 'folha:gerar_guias' c.pk %}">{% csrf_token %}<button class="btn {% if etapa == 4 %}primario{% endif %}" data-ocupado="Gerando">Gerar guias</button></form>
+  </div>
+  <div class="acao">
+    <h3>Acompanhar eSocial</h3>
+    <p>{{ eventos_aceitos }} de {{ eventos|length }} eventos aceitos. O envio continua sozinho enquanto o sistema estiver aberto (ou pelo agendador do servidor).</p>
+    <a class="btn" href="{% url 'esocial:eventos' %}">Ver eventos</a>
+  </div>
+</div>
+{% endif %}
+
+{% if eventos_problema %}
+<div class="msg error"><strong>{{ eventos_problema|length }} evento(s) com problema:</strong>
+  <ul>{% for e in eventos_problema %}<li><a href="{% url 'esocial:evento' e.pk %}">{{ e.tipo }} {{ e.descricao }}</a>: {{ e.mensagens.0|default:"" }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+{% if form_lancamento and c.editavel %}
+<form method="post" action="{% url 'folha:lancamento_novo' c.pk %}" class="card">
+  {% csrf_token %}
+  <h2>Lançar horas extras, faltas e outros valores do mês</h2>
+  <p class="muted">Salário, adicionais fixos, DSR, INSS, IRRF, salário-família, vale-transporte, férias e 13º são calculados sozinhos. Aqui entra só o que varia no mês.</p>
+  <div class="form-grid">
+    {% for campo in form_lancamento %}<div class="campo"><label for="{{ campo.id_for_label }}">{{ campo.label|capfirst }}</label>{{ campo }}{% if campo.help_text %}<div class="ajuda">{{ campo.help_text }}</div>{% endif %}</div>{% endfor %}
+  </div>
+  <p><button class="btn">Adicionar lançamento</button></p>
+</form>
+{% endif %}
+
+{% if lancamentos %}
+<h2>Lançamentos do mês</h2>
+<div class="tabela"><table>
+  <thead><tr><th>Funcionário</th><th>Rubrica</th><th class="num">Qtd.</th><th class="num">Valor</th><th>Obs.</th><th></th></tr></thead>
+  <tbody>{% for l in lancamentos %}<tr><td>{{ l.funcionario.nome }}</td><td>{{ l.rubrica }}</td><td class="num">{{ l.quantidade|default_if_none:"" }}</td>
+  <td class="num">{{ l.valor|default_if_none:""|floatformat:"2g" }}</td><td>{{ l.observacao }}</td>
+  <td>{% if c.editavel %}<form class="inline" method="post" action="{% url 'folha:lancamento_excluir' l.pk %}">{% csrf_token %}<button class="btn pequeno perigo" title="Remove este lançamento">Excluir</button></form>{% endif %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}
+
+{% if ferias_mes %}
+<div class="explica">Férias pagas neste mês: {% for fe in ferias_mes %}<a href="{% url 'folha:ferias_detalhe' fe.pk %}">{{ fe.funcionario.nome }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}. O recibo entra como demonstrativo separado e o INSS das férias é descontado na folha do mês do gozo.</div>
+{% endif %}
+
+{% if holerites %}
+<h2>Demonstrativos</h2>
+<div class="tabela"><table>
+  <thead><tr><th>Funcionário</th><th>Tipo</th><th>Pagamento</th><th class="num">Proventos</th><th class="num">Descontos</th><th class="num">INSS</th><th class="num">IRRF</th><th class="num">FGTS</th><th class="num">Líquido</th></tr></thead>
+  <tbody>{% for h in holerites %}<tr>
+    <td><a href="{% url 'folha:holerite' h.pk %}" title="Abrir o holerite">{{ h.funcionario.nome }}</a></td><td>{{ h.get_tipo_display }}</td><td>{{ h.data_pagamento|date:"d/m" }}</td>
+    <td class="num">{{ h.total_proventos|floatformat:"2g" }}</td><td class="num">{{ h.total_descontos|floatformat:"2g" }}</td>
+    <td class="num">{{ h.valor_inss|floatformat:"2g" }}</td><td class="num">{{ h.valor_irrf|floatformat:"2g" }}</td>
+    <td class="num">{{ h.valor_fgts|floatformat:"2g" }}</td><td class="num"><strong>{{ h.liquido|floatformat:"2g" }}</strong></td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}
+
+{% if resumo %}
+<div class="grid">
+  <div class="card">
+    <h2>Totais</h2>
+    <table>
+      <tr><td>Proventos</td><td class="num">{{ resumo.total_proventos|floatformat:"2g" }}</td></tr>
+      <tr><td>Descontos</td><td class="num">{{ resumo.total_descontos|floatformat:"2g" }}</td></tr>
+      <tr><td><strong>Líquido a pagar</strong></td><td class="num"><strong>{{ resumo.total_liquido|floatformat:"2g" }}</strong></td></tr>
+      <tr><td>Custo total para a empresa</td><td class="num">{{ resumo.custo_total_empresa|floatformat:"2g" }}</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Prévia do DARF (DCTFWeb)</h2>
+    <table>
+      <tr><td>INSS dos empregados</td><td class="num">{{ resumo.inss_segurados|floatformat:"2g" }}</td></tr>
+      <tr><td>Patronal 20% {% if not c.empresa.recolhe_cpp_patronal %}<span class="muted">(no DAS)</span>{% endif %}</td><td class="num">{{ resumo.cpp_patronal|floatformat:"2g" }}</td></tr>
+      <tr><td>RAT ajustado ({{ c.empresa.aliq_rat_ajustada|floatformat:4 }}%)</td><td class="num">{{ resumo.rat|floatformat:"2g" }}</td></tr>
+      <tr><td>Terceiros ({{ c.empresa.aliq_terceiros }}%)</td><td class="num">{{ resumo.terceiros|floatformat:"2g" }}</td></tr>
+      <tr><td>(−) Salário-família</td><td class="num">{{ resumo.salario_familia|floatformat:"2g" }}</td></tr>
+      <tr><td>IRRF retido</td><td class="num">{{ resumo.irrf|floatformat:"2g" }}</td></tr>
+      <tr><td><strong>Total estimado</strong></td><td class="num"><strong>{{ resumo.darf_estimado|floatformat:"2g" }}</strong></td></tr>
+    </table>
+    <p class="muted">Estimativa para conferência; o valor oficial é calculado pela Receita a partir do eSocial.</p>
+  </div>
+  <div class="card">
+    <h2>Prévia do FGTS</h2>
+    <table>
+      <tr><td>Base do FGTS</td><td class="num">{{ resumo.base_fgts|floatformat:"2g" }}</td></tr>
+      <tr><td><strong>FGTS ({% if c.decimo_terceiro %}13º{% else %}8%{% endif %})</strong></td><td class="num"><strong>{{ resumo.fgts|floatformat:"2g" }}</strong></td></tr>
+    </table>
+    <p class="muted">Pago pela guia GFD no FGTS Digital, até o dia 20.</p>
+  </div>
+</div>
+{% endif %}
+
+{% if guias %}
+<div class="card">
+  <h2>Guias</h2>
+  <ul>{% for g in guias %}<li>{{ g.get_tipo_display }}: R$ {{ g.valor_estimado|floatformat:"2g" }} · vence {{ g.vencimento|date:"d/m/Y" }} · <span class="tag {{ g.status }}">{{ g.get_status_display }}</span></li>{% endfor %}</ul>
+  <a class="btn" href="{% url 'folha:guias' c.pk %}">Abrir guias</a>
+</div>
+{% endif %}
+{% endblock %}

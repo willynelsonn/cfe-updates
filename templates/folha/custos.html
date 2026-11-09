@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Custos da equipe{% endblock %}
+{% block content %}
+<div class="topo">
+  <div><h1>Custos da equipe</h1><div class="subtitulo">Quanto cada funcionário custa por mês de verdade: salário, encargos, FGTS, provisões de 13º e férias e benefícios.</div></div>
+</div>
+<section class="kpis">
+  <div class="kpi"><div class="rotulo">Custo mensal da equipe</div><div class="valor">{{ total|moeda }}</div><div class="rodape">{{ lista|length }} funcionário{{ lista|length|pluralize }} ativo{{ lista|length|pluralize }}</div></div>
+  <div class="kpi"><div class="rotulo">Custo anual estimado</div><div class="valor">{{ anual|compacto }}</div><div class="rodape">12 meses, com 13º e férias provisionados</div></div>
+  <div class="kpi"><div class="rotulo">Custo médio por pessoa</div><div class="valor">{{ media|moeda }}</div><div class="rodape">por mês</div></div>
+  <div class="kpi"><div class="rotulo">Encargos patronais</div><div class="valor">{{ aliq_encargos|pct:2 }}</div><div class="rodape">{% if aliq_encargos %}sobre a remuneração{% else %}no DAS (Simples Nacional){% endif %}</div></div>
+</section>
+
+<div class="cols-2">
+  <section class="card">
+    <div class="card-cab"><div><h2>Custo por funcionário</h2><span class="dica">Ordenado do maior para o menor. “Custo ÷ salário” mostra quantas vezes o salário a pessoa custa.</span></div></div>
+    <table>
+      <thead><tr><th>Funcionário</th><th class="num">Salário</th><th class="num">Encargos + FGTS</th><th class="num">Provisões</th><th class="num">Benefícios</th><th class="num">Custo/mês</th><th class="num" title="Quantas vezes o salário a pessoa custa">Custo ÷ salário</th></tr></thead>
+      <tbody>{% for f, cu in lista %}<tr>
+        <td><div class="pessoa"><span class="avatar">{{ f.nome|iniciais }}</span><div><a href="{% url 'pessoal:detalhe' f.pk %}">{{ f.nome }}</a><small>{{ f.cargo.nome }}</small></div></div></td>
+        <td class="num">{{ cu.remuneracao|moeda }}</td>
+        <td class="num">{{ cu.encargos_fgts|moeda }}</td>
+        <td class="num">{{ cu.provisoes|moeda }}</td><td class="num">{{ cu.beneficios|moeda }}</td>
+        <td class="num"><b>{{ cu.total|moeda }}</b></td><td class="num">{{ cu.multiplicador|numero }}</td></tr>
+      {% empty %}<tr><td colspan="7"><div class="vazio">Nenhum funcionário ativo.</div></td></tr>{% endfor %}</tbody>
+      {% if lista %}<tfoot><tr><td>Total</td><td></td><td></td><td></td><td></td><td class="num">{{ total|moeda }}</td><td></td></tr></tfoot>{% endif %}
+    </table>
+  </section>
+
+  <section class="card" id="simulador">
+    <div class="card-cab"><div><h2>{% icone "calculadora" %} Quanto custa contratar?</h2><span class="dica">Simulação com a tributação desta empresa</span></div></div>
+    <form method="get" action="#simulador">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="campo"><label for="sal">Salário (R$)</label><input id="sal" name="salario" inputmode="decimal" placeholder="2.500,00" value="{{ request.GET.salario }}" required></div>
+        <div class="campo"><label for="vt">Vale-transporte (R$/mês)</label><input id="vt" name="vt" inputmode="decimal" placeholder="0" value="{{ request.GET.vt }}"></div>
+        <div class="campo"><label for="ben">Outros benefícios (R$/mês)</label><input id="ben" name="beneficios" inputmode="decimal" placeholder="0" value="{{ request.GET.beneficios }}"></div>
+        <div class="campo"><label style="margin-top:28px"><input type="checkbox" name="periculosidade" {% if request.GET.periculosidade %}checked{% endif %}> Periculosidade (30%)</label></div>
+      </div>
+      <p style="margin-top:12px"><button class="btn primario">Calcular custo</button></p>
+    </form>
+    {% if simulacao %}
+      <div class="kpi" style="box-shadow:none;margin:6px 0 12px;background:var(--surface-2)"><div class="rotulo">Custo mensal estimado</div><div class="valor">{{ simulacao.total|moeda }}</div>
+        <div class="rodape">{{ simulacao.anual|compacto }} por ano · {{ simulacao.multiplicador|numero }}× o salário</div></div>
+      {% with custo=simulacao %}{% include "folha/_custo_detalhe.html" %}{% endwith %}
+    {% endif %}
+  </section>
+</div>
+{% if partes_encargos %}
+<div class="card"><h2>Como os encargos desta empresa são compostos</h2>
+  <ul class="lista-valores">{% for nome, p in partes_encargos %}<li><span></span><span>{{ nome }}</span><span></span><span class="num">{{ p|pct:2 }}</span></li>{% endfor %}</ul>
+  <p class="dica">Mais FGTS de 8% e provisões. Ajuste RAT, FAP e terceiros no cadastro da empresa.</p></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}eSocial{% endblock %}
+{% block recarregar %}1{% endblock %}
+{% block content %}
+<div class="topo"><h1>eSocial</h1><a class="btn" href="{% url 'esocial:lotes' %}" title="Histórico técnico de cada envio">Histórico de envios</a></div>
+<div class="grid">
+  <div class="card kpi"><div class="valor">{{ fila.pendentes }}</div><div class="rotulo">na fila (aguardando a vez)</div></div>
+  <div class="card kpi"><div class="valor">{{ fila.enviados }}</div><div class="rotulo">com o governo (processando)</div></div>
+  <div class="card kpi"><div class="valor">{{ fila.aceitos }}</div><div class="rotulo">aceitos</div></div>
+  <div class="card kpi"><div class="valor">{{ fila.problemas }}</div><div class="rotulo">com erro — <a href="?status=rejeitado">ver</a></div></div>
+</div>
+<div class="acoes-grid">
+  <div class="acao destaque">
+    <h3>Enviar e atualizar agora</h3>
+    <p>Consulta o resultado do que já foi enviado e envia o que estiver liberado. O sistema faz isso sozinho a cada 15 segundos enquanto houver algo em andamento — use o botão só se quiser forçar.</p>
+    <form method="post" action="{% url 'esocial:transmitir' %}">{% csrf_token %}<button class="btn primario" data-ocupado="Enviando">Enviar e atualizar</button></form>
+  </div>
+  <div class="acao">
+    <h3>Enviar cadastro da empresa e rubricas</h3>
+    <p>Gera o que faltar de S-1000 (empresa), S-1005 (estabelecimento), S-1020 (lotação) e S-1010 (rubricas). Feito uma vez; depois só as rubricas novas.</p>
+    <form method="post" action="{% url 'esocial:gerar_iniciais' %}">{% csrf_token %}<button class="btn" data-ocupado="Gerando">Enviar cadastros</button></form>
+  </div>
+</div>
+<p class="muted">Ambiente: <strong>{{ empresa_ativa.get_ambiente_esocial_display }}</strong>. A ordem é respeitada automaticamente: cada evento só é enviado depois que os que ele precisa (ex.: a admissão antes da folha) forem aceitos.</p>
+<form method="get" class="acoes" style="margin-bottom:12px">
+  <select name="status" class="btn" aria-label="Filtrar por situação"><option value="">Todas as situações</option>{% for v, n in status_choices %}<option value="{{ v }}" {% if request.GET.status == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select>
+  <input name="tipo" value="{{ request.GET.tipo }}" placeholder="Evento (ex.: S-1200)" class="btn" aria-label="Filtrar por evento">
+  <button class="btn">Filtrar</button>
+</form>
+<div class="tabela"><table>
+  <thead><tr><th>Evento</th><th>Descrição</th><th>Período</th><th>Situação</th><th>Recibo</th><th>Criado</th></tr></thead>
+  <tbody>{% for e in object_list %}
+    <tr><td><a href="{% url 'esocial:evento' e.pk %}">{{ e.tipo }}</a></td><td>{{ e.descricao }}{% if e.mensagens and e.status != 'aceito' %}<br><span style="font-size:12px;color:{% if e.corrigivel %}var(--err){% else %}var(--muted){% endif %}">{{ e.mensagens.0|truncatechars:160 }}</span>{% endif %}</td>
+    <td>{{ e.per_apur }}</td><td><span class="tag {{ e.status }}">{{ e.get_status_display }}</span>{% if e.corrigivel %} <a class="btn pequeno" href="{% url 'esocial:evento' e.pk %}">Corrigir</a>{% endif %}</td><td>{{ e.recibo }}</td><td>{{ e.criado_em|date:"d/m/Y H:i" }}</td></tr>
+  {% empty %}<tr><td colspan="6" class="muted">Nenhum evento.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% if is_paginated %}<p class="acoes">{% if page_obj.has_previous %}<a class="btn" href="?page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %} Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} {% if page_obj.has_next %}<a class="btn" href="?page={{ page_obj.next_page_number }}">Próxima</a>{% endif %}</p>{% endif %}
+{% endblock %}
