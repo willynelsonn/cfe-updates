@@ -51,6 +51,20 @@ Pesquisei a regra vigente, mas estes itens não puderam ser conferidos no texto 
 
 Todas as rubricas podem ser editadas na tela **Rubricas**. Teste tudo primeiro em **produção restrita**.
 
+## Jeito fácil no Windows (dois cliques)
+
+1. Instale o [Python](https://www.python.org/downloads/) (marque "Add python.exe to PATH") e o
+   [Git](https://git-scm.com/download/win).
+2. Baixe o projeto uma vez (no PowerShell, dentro de Documentos):
+   `git clone https://github.com/willynelsonn/cfe-updates.git`
+3. Abra a pasta `cfe-updates` e dê **dois cliques em `FolhaWeb.bat`**.
+
+O `FolhaWeb.bat` faz tudo sozinho toda vez que é aberto: baixa as atualizações, prepara o ambiente
+do Python na primeira vez, instala as bibliotecas, atualiza o banco, pede para criar o seu usuário
+se ainda não houver nenhum, cria o atalho **FolhaWeb** na Área de Trabalho e abre o sistema no
+navegador. Depois da primeira vez, é só usar o atalho. Deixe a janela preta aberta enquanto usa o
+sistema; para encerrar, feche a janela.
+
 ## Como rodar
 
 Requisitos: Python 3.11+.
