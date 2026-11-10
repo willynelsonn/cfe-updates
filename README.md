@@ -145,6 +145,22 @@ mais recente e mostra um aviso na tela da competência. Valores de 2026 usados:
 Confira esses números na fonte oficial antes de usar. A redução do IRRF é calculada sobre o
 rendimento tributável bruto do mês.
 
+## Visual e movimento
+
+- **Seis cores de sistema** (Laranja, Azul, Verde, Roxo, Rosa e Grafite) e aparência clara, escura ou
+  automática, escolhidas no menu da conta (círculo com as iniciais) e salvas no navegador. Cada cor
+  reordena a paleta dos gráficos numa ordem validada para daltonismo nos modos claro e escuro.
+- Navegação em pílula no topo (a pílula escura desliza até o item sob o mouse), cartões amplos e
+  um único destaque laranja por página; tipografia Plus Jakarta Sans com títulos em Instrument Serif
+  itálico (Google Fonts, com fonte do sistema como reserva). Modo claro e escuro.
+- Animações com **GSAP 3.13** (`static/vendor/gsap`, licença sem custo da GreenSock): entrada da página
+  em cascata, títulos que sobem de uma máscara, números que contam até o valor, barras que crescem e
+  revelação ao rolar (ScrollTrigger). Tudo respeita "reduzir movimento" do sistema e a impressão.
+  Regras em `static/js/movimento.js`.
+- Tela de login com uma cena **Three.js r170** (`static/vendor/three`, licença MIT): um campo de pontos
+  em onda que acompanha o mouse (`static/js/login3d.js`).
+- Gráficos em SVG próprio (`static/js/graficos.js`) com a paleta validada para daltonismo.
+
 ## Notas técnicas
 
 - **Assinatura digital**: XMLDSig envelopada (`Reference URI=""`), RSA-SHA256, C14N inclusiva e

@@ -4,7 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}FolhaWeb{% endblock %} · FolhaWeb</title>
-  <script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+  <script>
+    try {
+      var t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.theme = t;
+      var c = localStorage.getItem("cor"); if (c) document.documentElement.dataset.cor = c;
+    } catch (e) {}
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js-anima");
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
@@ -12,76 +21,108 @@
 {% if user.is_authenticated %}
 {% with ns=request.resolver_match.namespace nome=request.resolver_match.url_name %}
 <div class="layout">
-  <aside class="sidebar" id="sidebar" aria-label="Menu principal">
-    <a class="brand" href="{% url 'dashboard' %}"><span class="logo">FW</span><span>FolhaWeb<small>Departamento pessoal</small></span></a>
-    <nav class="nav">
-      <a href="{% url 'dashboard' %}" class="{% if nome == 'dashboard' %}ativo{% endif %}">{% icone "inicio" %} Painel{% if pendencias_criticas %}<span class="badge" title="Pendências legais urgentes">{{ pendencias_criticas }}</span>{% endif %}</a>
+  <header class="topnav">
+    <div class="topnav-barra">
+      <a class="brand" href="{% url 'dashboard' %}" aria-label="FolhaWeb, painel"><span class="logo">FW</span><span class="nome">FolhaWeb</span></a>
 
-      <div class="nav-sec">Rotina</div>
-      <a href="{% url 'folha:competencias' %}" class="{% if ns == 'folha' and nome in 'competencias competencia competencia_nova competencia_editar guias holerite holerites_impressao' %}ativo{% endif %}">{% icone "folha" %} Folha do mês</a>
-      <a href="{% url 'folha:ferias' %}" class="{% if nome|slice:':6' == 'ferias' %}ativo{% endif %}">{% icone "ferias" %} Férias</a>
-      <a href="{% url 'folha:decimo_terceiro' %}" class="{% if nome == 'decimo_terceiro' %}ativo{% endif %}">{% icone "presente" %} 13º salário</a>
-      <a href="{% url 'folha:rescisoes' %}" class="{% if nome|slice:':8' == 'rescisao' or nome == 'rescisoes' %}ativo{% endif %}">{% icone "saida" %} Rescisões</a>
+      <nav class="pilulas" aria-label="Menu principal" data-pilulas>
+        <span class="indicador" aria-hidden="true"></span>
+        <a href="{% url 'dashboard' %}" class="{% if nome == 'dashboard' %}ativo{% endif %}">{% icone "inicio" "sm" %}<span>Painel</span>{% if pendencias_criticas %}<span class="badge" title="Pendências legais urgentes">{{ pendencias_criticas }}</span>{% endif %}</a>
+        <a href="{% url 'folha:competencias' %}" class="{% if ns == 'folha' and nome in 'competencias competencia competencia_nova competencia_editar guias holerite holerites_impressao' %}ativo{% endif %}">{% icone "folha" "sm" %}<span>Folha</span></a>
+        <a href="{% url 'pessoal:lista' %}" class="{% if ns == 'pessoal' and nome != 'cargos' and nome != 'cargo_editar' %}ativo{% endif %}">{% icone "pessoas" "sm" %}<span>Pessoas</span></a>
+        <a href="{% url 'folha:ferias' %}" class="{% if nome|slice:':6' == 'ferias' %}ativo{% endif %}">{% icone "ferias" "sm" %}<span>Férias</span></a>
+        <a href="{% url 'folha:rescisoes' %}" class="{% if nome|slice:':8' == 'rescisao' or nome == 'rescisoes' %}ativo{% endif %}">{% icone "saida" "sm" %}<span>Rescisões</span></a>
+        <a href="{% url 'folha:custos' %}" class="{% if nome == 'custos' %}ativo{% endif %}">{% icone "custo" "sm" %}<span>Custos</span></a>
+        <a href="{% url 'esocial:eventos' %}" class="{% if ns == 'esocial' and nome != 'guia' %}ativo{% endif %}">{% icone "enviar" "sm" %}<span>eSocial</span></a>
+        <div class="mais">
+          <button type="button" aria-expanded="false" aria-controls="menu-mais" data-alternar="menu-mais">Mais {% icone "seta" "sm" %}</button>
+          <div class="menu-mais" id="menu-mais" role="menu">
+            <a href="{% url 'folha:decimo_terceiro' %}" class="{% if nome == 'decimo_terceiro' %}ativo{% endif %}">{% icone "presente" %} 13º salário</a>
+            <a href="{% url 'esocial:guia' %}" class="{% if nome == 'guia' %}ativo{% endif %}">{% icone "recibo" %} DCTFWeb e FGTS</a>
+            <a href="{% url 'pessoal:cargos' %}" class="{% if nome == 'cargos' %}ativo{% endif %}">{% icone "maleta" %} Cargos</a>
+            <a href="{% url 'folha:rubricas' %}" class="{% if nome|slice:':7' == 'rubrica' %}ativo{% endif %}">{% icone "lista" %} Rubricas</a>
+            <a href="{% url 'empresas:lista' %}" class="{% if ns == 'empresas' %}ativo{% endif %}">{% icone "predio" %} Empresas</a>
+            {% if user.is_staff %}<a href="{% url 'admin:index' %}">{% icone "engrenagem" %} Administração</a>{% endif %}
+          </div>
+        </div>
+      </nav>
 
-      <div class="nav-sec">Pessoas e custos</div>
-      <a href="{% url 'pessoal:lista' %}" class="{% if ns == 'pessoal' and nome != 'cargos' and nome != 'cargo_editar' %}ativo{% endif %}">{% icone "pessoas" %} Funcionários</a>
-      <a href="{% url 'folha:custos' %}" class="{% if nome == 'custos' %}ativo{% endif %}">{% icone "custo" %} Custos da equipe</a>
-      <a href="{% url 'pessoal:cargos' %}" class="{% if nome == 'cargos' or nome == 'cargo_editar' %}ativo{% endif %}">{% icone "maleta" %} Cargos</a>
-
-      <div class="nav-sec">Governo</div>
-      <a href="{% url 'esocial:eventos' %}" class="{% if ns == 'esocial' and nome != 'guia' %}ativo{% endif %}">{% icone "enviar" %} eSocial</a>
-      <a href="{% url 'esocial:guia' %}" class="{% if nome == 'guia' %}ativo{% endif %}">{% icone "recibo" %} DCTFWeb e FGTS</a>
-
-      <div class="nav-sec">Configurações</div>
-      <a href="{% url 'empresas:lista' %}" class="{% if ns == 'empresas' %}ativo{% endif %}">{% icone "predio" %} Empresas</a>
-      <a href="{% url 'folha:rubricas' %}" class="{% if nome|slice:':7' == 'rubrica' %}ativo{% endif %}">{% icone "lista" %} Rubricas</a>
-      {% if user.is_staff %}<a href="{% url 'admin:index' %}">{% icone "engrenagem" %} Administração</a>{% endif %}
-    </nav>
-    {% if empresa_ativa %}
-    <div class="sidebar-rodape">
-      <div id="status-esocial" class="status-esocial" role="status" aria-live="polite"
-           title="Enquanto o sistema estiver aberto, a fila do eSocial é processada automaticamente."
-           data-processar="{% url 'esocial:processar_json' %}" data-situacao="{% url 'esocial:situacao_json' %}"
-           data-recarregar="{% block recarregar %}0{% endblock %}">
-        <span class="pulso"></span><span class="texto">Verificando eSocial…</span>
+      <div class="topnav-dir">
+        {% if empresas_disponiveis %}
+        <form method="post" class="seletor-empresa" title="Empresa em que você está trabalhando">
+          {% csrf_token %}{% icone "predio" "sm" %}
+          <label class="sr-only" for="trocar-empresa">Empresa</label>
+          <select id="trocar-empresa" onchange="this.form.action=this.value; this.form.submit()">
+            {% for e in empresas_disponiveis %}
+            <option value="{% url 'empresas:selecionar' e.pk %}" {% if empresa_ativa and e.pk == empresa_ativa.pk %}selected{% endif %}>{{ e }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% endif %}
+        {% if empresa_ativa %}
+        <div class="mais">
+          <button class="btn-icone" type="button" aria-label="Situação do eSocial" title="Situação do eSocial" aria-expanded="false" aria-controls="pop-esocial" data-alternar="pop-esocial">
+            {% icone "enviar" %}<span class="ponto" data-ponto-esocial></span>
+          </button>
+          <div class="popover" id="pop-esocial">
+            <div id="status-esocial" role="status" aria-live="polite"
+                 data-processar="{% url 'esocial:processar_json' %}" data-situacao="{% url 'esocial:situacao_json' %}"
+                 data-recarregar="{% block recarregar %}0{% endblock %}">
+              <span class="texto">Verificando eSocial…</span>
+            </div>
+            <p class="dica" style="margin-top:10px">Enquanto o sistema estiver aberto, a fila do eSocial é enviada e consultada sozinha.</p>
+            <a class="btn pequeno" href="{% url 'esocial:eventos' %}">Abrir eventos</a>
+          </div>
+        </div>
+        {% endif %}
+        <button class="btn-icone opcional" type="button" data-tema aria-label="Alternar modo claro/escuro" title="Modo claro/escuro">{% icone "lua" %}</button>
+        <div class="mais">
+          <button class="avatar" type="button" style="border:0;cursor:pointer" aria-label="Conta" aria-expanded="false" aria-controls="pop-conta" data-alternar="pop-conta">{{ user.get_full_name|default:user.username|iniciais }}</button>
+          <div class="popover" id="pop-conta" style="width:280px">
+            <b>{{ user.get_full_name|default:user.username }}</b>
+            <div class="dica" style="margin-bottom:12px">{{ empresa_ativa|default:"" }}</div>
+            {% include "_preferencias.html" %}
+            <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn pequeno" type="submit">{% icone "sair" "sm" %} Sair</button></form>
+          </div>
+        </div>
+        <button class="btn-icone menu-movel" type="button" aria-label="Abrir menu" aria-controls="folha-movel" aria-expanded="false" data-abrir-menu>{% icone "menu" %}</button>
       </div>
     </div>
-    {% endif %}
-  </aside>
+  </header>
 
-  <div class="main">
-    <header class="topbar">
-      <button class="btn-icone menu-movel" type="button" aria-label="Abrir menu" aria-controls="sidebar" data-abrir-menu>{% icone "menu" %}</button>
-      <div class="migalha">{% block migalha %}<strong>{% block titulo_topo %}{% endblock %}</strong>{% endblock %}</div>
-      <div class="espaco"></div>
-      {% if empresas_disponiveis %}
-      <form method="post" class="seletor-empresa" title="Empresa em que você está trabalhando">
-        {% csrf_token %}{% icone "predio" "sm" %}
-        <label class="sr-only" for="trocar-empresa">Empresa</label>
-        <select id="trocar-empresa" onchange="this.form.action=this.value; this.form.submit()">
-          {% for e in empresas_disponiveis %}
-          <option value="{% url 'empresas:selecionar' e.pk %}" {% if empresa_ativa and e.pk == empresa_ativa.pk %}selected{% endif %}>{{ e }}</option>
-          {% endfor %}
-        </select>
-      </form>
-      {% endif %}
-      <button class="btn-icone" type="button" data-tema aria-label="Alternar modo claro/escuro" title="Modo claro/escuro">{% icone "lua" %}</button>
-      <form method="post" action="{% url 'logout' %}" class="inline">{% csrf_token %}
-        <button class="btn-icone" type="submit" aria-label="Sair" title="Sair ({{ user.username }})">{% icone "sair" %}</button>
-      </form>
-      <span class="avatar" title="{{ user.get_full_name|default:user.username }}">{{ user.get_full_name|default:user.username|iniciais }}</span>
-    </header>
-    <main class="conteudo" id="conteudo">
-      {% for m in messages %}<div class="msg {{ m.tags }}" role="status">{% if m.tags == 'error' %}{% icone "alerta" %}{% elif m.tags == 'success' %}{% icone "ok" %}{% else %}{% icone "info" %}{% endif %}<div>{{ m }}</div></div>{% endfor %}
-      {% block content %}{% endblock %}
-    </main>
-  </div>
+  <nav class="folha-movel" id="folha-movel" aria-label="Menu">
+    <a href="{% url 'dashboard' %}" class="{% if nome == 'dashboard' %}ativo{% endif %}">{% icone "inicio" %} Painel</a>
+    <div class="sec">Rotina</div>
+    <a href="{% url 'folha:competencias' %}">{% icone "folha" %} Folha do mês</a>
+    <a href="{% url 'folha:ferias' %}">{% icone "ferias" %} Férias</a>
+    <a href="{% url 'folha:decimo_terceiro' %}">{% icone "presente" %} 13º salário</a>
+    <a href="{% url 'folha:rescisoes' %}">{% icone "saida" %} Rescisões</a>
+    <div class="sec">Pessoas e custos</div>
+    <a href="{% url 'pessoal:lista' %}">{% icone "pessoas" %} Funcionários</a>
+    <a href="{% url 'folha:custos' %}">{% icone "custo" %} Custos da equipe</a>
+    <a href="{% url 'pessoal:cargos' %}">{% icone "maleta" %} Cargos</a>
+    <div class="sec">Governo e configurações</div>
+    <a href="{% url 'esocial:eventos' %}">{% icone "enviar" %} eSocial</a>
+    <a href="{% url 'esocial:guia' %}">{% icone "recibo" %} DCTFWeb e FGTS</a>
+    <a href="{% url 'empresas:lista' %}">{% icone "predio" %} Empresas</a>
+    <a href="{% url 'folha:rubricas' %}">{% icone "lista" %} Rubricas</a>
+    <div class="sec">Aparência</div>
+    <div style="padding:0 16px">{% include "_preferencias.html" %}</div>
+  </nav>
+
+  <main class="conteudo" id="conteudo">
+    {% for m in messages %}<div class="msg {{ m.tags }}" role="status">{% if m.tags == 'error' %}{% icone "alerta" %}{% elif m.tags == 'success' %}{% icone "ok" %}{% else %}{% icone "info" %}{% endif %}<div>{{ m }}</div></div>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
 </div>
 {% endwith %}
 {% else %}
   {% block anon %}{% endblock %}
 {% endif %}
+<script src="{% static 'vendor/gsap/gsap.min.js' %}"></script>
+<script src="{% static 'vendor/gsap/ScrollTrigger.min.js' %}"></script>
 <script src="{% static 'js/app.js' %}"></script>
+<script src="{% static 'js/movimento.js' %}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
