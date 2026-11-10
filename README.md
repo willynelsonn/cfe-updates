@@ -148,7 +148,8 @@ rendimento tributável bruto do mês.
 ## Visual e movimento
 
 - **Seis cores de sistema** (Laranja, Azul, Verde, Roxo, Rosa e Grafite) e aparência clara, escura ou
-  automática, escolhidas no menu da conta (círculo com as iniciais) e salvas no navegador. Cada cor
+  automática, escolhidas no menu da conta (círculo com as iniciais) e salvas no navegador. A cor
+  padrão é a Grafite (preto e branco); para mudar o padrão de todos, defina `FOLHA_COR_PADRAO`. Cada cor
   reordena a paleta dos gráficos numa ordem validada para daltonismo nos modos claro e escuro.
 - Navegação em pílula no topo (a pílula escura desliza até o item sob o mouse), cartões amplos e
   um único destaque laranja por página; tipografia Plus Jakarta Sans com títulos em Instrument Serif

@@ -60,6 +60,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "empresas.context_processors.empresa_ativa",
+                "empresas.context_processors.aparencia",
             ],
         },
     },
@@ -137,3 +138,7 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Cor do sistema usada quando o usuário ainda não escolheu outra no menu da conta.
+# Opções: laranja, azul, verde, roxo, rosa, grafite.
+FOLHA_COR_PADRAO = os.environ.get("FOLHA_COR_PADRAO", "grafite")
