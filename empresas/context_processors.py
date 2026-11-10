@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.utils.functional import SimpleLazyObject
 
 from .models import Empresa
@@ -19,3 +20,11 @@ def empresa_ativa(request):
         "empresas_disponiveis": Empresa.objects.filter(ativa=True).only("id", "razao_social", "nome_fantasia"),
         "pendencias_criticas": SimpleLazyObject(lambda: _criticos(request)),
     }
+
+
+CORES = {"laranja", "azul", "verde", "roxo", "rosa", "grafite"}
+
+
+def aparencia(request):
+    cor = getattr(settings, "FOLHA_COR_PADRAO", "laranja")
+    return {"cor_padrao": cor if cor in CORES else "laranja"}

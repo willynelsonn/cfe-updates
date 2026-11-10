@@ -82,8 +82,8 @@
   document.querySelectorAll("button[data-cor]").forEach(function (b) {
     b.addEventListener("click", function (ev) {
       ev.stopPropagation();
-      if (b.dataset.cor === "laranja") delete raizDoc.dataset.cor; else raizDoc.dataset.cor = b.dataset.cor;
-      salvar("cor", b.dataset.cor === "laranja" ? null : b.dataset.cor);
+      raizDoc.dataset.cor = b.dataset.cor;
+      salvar("cor", b.dataset.cor);
       marcarPreferencias();
       document.dispatchEvent(new Event("tema-alterado"));
     });

@@ -240,3 +240,10 @@ class LoginTest(TestCase):
         for cor in ("laranja", "azul", "verde", "roxo", "rosa", "grafite"):
             self.assertContains(resp, f'data-cor="{cor}"')
         self.assertContains(resp, 'data-aparencia="auto"')
+
+
+class AparenciaPadraoTest(TestCase):
+    def test_grafite_e_padrao_e_estaticos_versionados(self):
+        resp = self.client.get(reverse("login"))
+        self.assertContains(resp, '<html lang="pt-br" data-cor="grafite">')
+        self.assertRegex(resp.content.decode(), r'js/app\.js\?v=\d+')

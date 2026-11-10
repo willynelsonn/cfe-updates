@@ -2,7 +2,11 @@
 
 from decimal import Decimal, InvalidOperation
 
+import os
+
 from django import template
+from django.contrib.staticfiles import finders
+from django.templatetags.static import static
 from django.utils.html import format_html
 
 register = template.Library()
@@ -65,3 +69,13 @@ def iniciais(nome):
 def pct(valor, casas=1):
     v = _dec(valor)
     return "—" if v is None else f"{v:.{int(casas)}f}%".replace(".", ",")
+
+
+@register.simple_tag
+def estatico(caminho):
+    """Como {% static %}, mas com ?v=<data de modificação>: o navegador baixa de novo quando o arquivo muda."""
+    url = static(caminho)
+    arquivo = finders.find(caminho)
+    if arquivo and os.path.exists(arquivo):
+        url += f"?v={int(os.path.getmtime(arquivo))}"
+    return url

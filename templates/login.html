@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static ui %}
 {% block title %}Entrar{% endblock %}
 {% block anon %}
 <div class="tela-login">
@@ -29,5 +29,5 @@
     </form>
   </div>
 </div>
-<script type="module" src="{% static 'js/login3d.js' %}"></script>
+<script type="module" src="{% estatico 'js/login3d.js' %}"></script>
 {% endblock %}
