@@ -2,5 +2,7 @@ Django>=5.2,<6
 lxml>=5
 cryptography>=42
 requests>=2.31
+whitenoise>=6.6,<7
+waitress>=3.0,<4
 # Opcional, para usar PostgreSQL em produção:
 # psycopg[binary]>=3.2

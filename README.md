@@ -65,6 +65,47 @@ se ainda não houver nenhum, cria o atalho **FolhaWeb** na Área de Trabalho e a
 navegador. Depois da primeira vez, é só usar o atalho. Deixe a janela preta aberta enquanto usa o
 sistema; para encerrar, feche a janela.
 
+## Publicar na internet a partir do seu servidor (Windows)
+
+O sistema roda no seu servidor e os dados ficam nele. O **Cloudflare Tunnel** (gratuito) cria o
+endereço `https://` na internet sem abrir portas no roteador e sem IP fixo.
+
+1. No servidor, faça os passos 1 e 2 do item anterior (Python, Git e `git clone`).
+2. Dê **dois cliques em `Servidor.bat`**. Na primeira vez ele:
+   - cria o arquivo `.env` com uma chave secreta nova (guarde uma cópia em local seguro);
+   - pede para criar o seu usuário (use senha forte: o sistema vai ficar na internet);
+   - baixa o `cloudflared` para a pasta `tools`.
+3. No fim aparece o endereço `https://….trycloudflare.com`. Ele já fica copiado e salvo no arquivo
+   `ENDERECO.txt`. Abra esse endereço no celular ou em outro computador.
+
+Toda vez que é aberto, o `Servidor.bat` também baixa as atualizações, faz backup na pasta `backups`
+e liga a fila do eSocial a cada 5 minutos (registro em `tools\fila.log`). Fechar a janela tira o
+sistema do ar.
+
+**Ligar sozinho com o Windows (opcional):** com o `Servidor.bat` fechado, dê dois cliques em
+`InstalarNoServidor.bat` e aceite o pedido de administrador. O sistema passa a ligar quando o
+Windows inicia (mesmo sem ninguém logado), religa sozinho se cair e faz backup todo dia às 2h.
+O registro fica em `tools\servidor.log`. Para desfazer: `InstalarNoServidor.bat /remover`.
+
+**Endereço fixo com domínio próprio (recomendado para uso diário):** o endereço `trycloudflare.com`
+é provisório e muda sempre que o servidor reinicia. Para um endereço fixo, como
+`folha.seudominio.com.br`:
+
+1. Crie uma conta grátis na [Cloudflare](https://dash.cloudflare.com/sign-up) e adicione o seu domínio.
+2. Em [Cloudflare One](https://one.dash.cloudflare.com/) › **Networks › Tunnels**, crie um túnel do
+   tipo *Cloudflared*, dê um nome e copie o **token** (o texto longo depois de `--token`).
+3. Em **Public hostname**, escolha o subdomínio e o serviço `HTTP` › `localhost:8000`.
+4. No arquivo `.env` do servidor, cole o token em `FOLHA_CLOUDFLARE_TOKEN=` e acrescente o domínio:
+   `FOLHA_ALLOWED_HOSTS=localhost,127.0.0.1,folha.seudominio.com.br` e
+   `FOLHA_CSRF_TRUSTED_ORIGINS=https://folha.seudominio.com.br`.
+5. Feche e abra o `Servidor.bat` de novo.
+
+**Segurança já ligada no modo servidor:** HTTPS pela Cloudflare, cookies seguros, sessão que expira
+em 8 horas, bloqueio de 15 minutos após 5 senhas erradas (por usuário e por IP), proteção contra
+a página ser aberta dentro de outro site e erros gravados em `folhaweb.log` sem mostrar detalhes
+técnicos na tela. Não use o usuário `admin`/`admin` dos dados de demonstração em um servidor
+publicado.
+
 ## Como rodar
 
 Requisitos: Python 3.11+.
@@ -117,8 +158,10 @@ python manage.py test
 
 ### Produção
 
-Use as variáveis de `.env.example` (chave secreta, PostgreSQL, domínio, pasta privada para
-os certificados) e rode atrás de um servidor HTTPS (por exemplo, gunicorn + nginx).
+No Windows, use o `Servidor.bat` (item acima). Em outro servidor, use as variáveis de
+`.env.example`, rode `python manage.py collectstatic` e `python manage.py servir` (Waitress em
+127.0.0.1:8000) atrás de um proxy HTTPS (Cloudflare Tunnel, nginx etc.).
+`python manage.py backup` gera um `.zip` com o banco, os certificados e o `.env` na pasta `backups`.
 **Faça backup do banco e da pasta de certificados**: a senha do certificado é cifrada com
 a `FOLHA_SECRET_KEY`. Se ela mudar, será preciso reenviar o certificado.
 

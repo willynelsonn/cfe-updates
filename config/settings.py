@@ -9,6 +9,21 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def _carregar_env(caminho: Path) -> None:
+    """Lê KEY=VALOR de um arquivo .env (sem sobrescrever variáveis já definidas no sistema)."""
+    if not caminho.exists():
+        return
+    for linha in caminho.read_text(encoding="utf-8").splitlines():
+        linha = linha.strip()
+        if not linha or linha.startswith("#") or "=" not in linha:
+            continue
+        chave, valor = linha.split("=", 1)
+        os.environ.setdefault(chave.strip(), valor.strip().strip('"').strip("'"))
+
+
+_carregar_env(BASE_DIR / ".env")
+
+
 def env_bool(name: str, default: bool = False) -> bool:
     return os.environ.get(name, str(default)).strip().lower() in {"1", "true", "sim", "yes", "on"}
 
@@ -19,6 +34,8 @@ SECRET_KEY = os.environ.get(
     "dev-insegura-troque-em-producao-0123456789abcdefghijklmnopqrstuvwxyz",
 )
 DEBUG = env_bool("FOLHA_DEBUG", True)
+if not DEBUG and SECRET_KEY.startswith("dev-insegura"):
+    raise RuntimeError("Defina FOLHA_SECRET_KEY no arquivo .env antes de rodar em produção.")
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("FOLHA_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("FOLHA_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 
@@ -38,6 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -104,6 +122,11 @@ USE_THOUSAND_SEPARATOR = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    # Comprimido (gzip/brotli) e servido pelo próprio sistema (WhiteNoise), sem servidor web extra.
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
 
 # Certificados A1 (.pfx) ficam fora da pasta pública.
 PRIVATE_MEDIA_ROOT = Path(os.environ.get("FOLHA_PRIVATE_MEDIA", BASE_DIR / "private_media"))
@@ -134,10 +157,30 @@ INTEGRA_CONTADOR = {
 FGTS_DIGITAL_URL = "https://fgtsdigital.sistema.gov.br/portal/login"
 ECAC_URL = "https://cav.receita.fazenda.gov.br/autenticacao/login"
 
+# Sessão expira após 8 horas e ao fechar o navegador.
+SESSION_COOKIE_AGE = 8 * 60 * 60
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Bloqueio de tentativas de login (por usuário e por IP)
+LOGIN_TENTATIVAS_MAX = int(os.environ.get("FOLHA_LOGIN_TENTATIVAS", "5"))
+LOGIN_BLOQUEIO_MINUTOS = int(os.environ.get("FOLHA_LOGIN_BLOQUEIO_MIN", "15"))
+
 if not DEBUG:
+    # Atrás do Cloudflare Tunnel o HTTPS termina na Cloudflare, que avisa pelo X-Forwarded-Proto.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_HTTPONLY = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "same-origin"
+    X_FRAME_OPTIONS = "DENY"
+    SECURE_HSTS_SECONDS = int(os.environ.get("FOLHA_HSTS_SEGUNDOS", "0"))
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "handlers": {"arquivo": {"class": "logging.FileHandler", "filename": BASE_DIR / "folhaweb.log", "encoding": "utf-8"}},
+        "root": {"handlers": ["arquivo"], "level": "WARNING"},
+    }
 
 # Cor do sistema usada quando o usuário ainda não escolheu outra no menu da conta.
 # Opções: laranja, azul, verde, roxo, rosa, grafite.
