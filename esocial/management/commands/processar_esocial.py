@@ -4,6 +4,8 @@ Agende no servidor (ex.: cron a cada 5 minutos):
     */5 * * * * cd /caminho/do/folhaweb && python manage.py processar_esocial
 """
 
+import time
+
 from django.core.management.base import BaseCommand
 
 from empresas.models import Empresa
@@ -16,7 +18,22 @@ from folha.models import Competencia
 class Command(BaseCommand):
     help = "Consulta retornos e envia os eventos liberados do eSocial; atualiza as guias."
 
+    def add_arguments(self, parser):
+        parser.add_argument("--intervalo", type=int, default=0,
+                            help="Repete a cada N segundos (0 = roda uma vez). Ex.: --intervalo 300")
+
     def handle(self, *args, **opts):
+        if not opts["intervalo"]:
+            self.uma_vez()
+            return
+        while True:
+            try:
+                self.uma_vez()
+            except Exception as exc:  # noqa: BLE001 - em modo contínuo, uma falha não pode parar a fila
+                self.stderr.write(f"Falha ao processar a fila: {exc!r}")
+            time.sleep(opts["intervalo"])
+
+    def uma_vez(self):
         for empresa in Empresa.objects.filter(ativa=True, envio_automatico=True):
             if not empresa.tem_certificado:
                 continue

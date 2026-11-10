@@ -3,6 +3,8 @@ setlocal
 chcp 65001 >nul
 title FolhaWeb
 cd /d "%~dp0"
+rem Uso local neste computador: modo de desenvolvimento, mesmo que exista o .env do servidor.
+set "FOLHA_DEBUG=true"
 
 echo.
 echo  ===========================================
@@ -78,7 +80,11 @@ rem ---- Inicia (ou reaproveita) o servidor e abre o navegador -----------------
 powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
 if not errorlevel 1 (
   echo  [5/5] O FolhaWeb ja estava aberto: so abrindo o navegador.
-  start "" "http://127.0.0.1:8000"
+  if exist "ENDERECO.txt" (
+    for /f "usebackq delims=" %%u in ("ENDERECO.txt") do start "" "%%u"
+  ) else (
+    start "" "http://127.0.0.1:8000"
+  )
   timeout /t 3 >nul
   exit /b 0
 )

@@ -8,3 +8,7 @@ staticfiles/
 venv/
 *.pfx
 *.p12
+backups/
+folhaweb.log
+tools/
+ENDERECO.txt
