@@ -53,6 +53,18 @@ O usuário sempre pediu **"crie o PR e faça o merge"** ao fim de cada etapa.
   Ele estava logado como `admin` ("Administrador") na empresa de demonstração "Padaria Pão Quente",
   ou seja, os dados de teste (`dados_demo`) foram carregados no banco dele.
 - Ainda **não cadastrou** a empresa real nem funcionários reais.
+- **Onde parou (11/11/2026):** ele abriu a tela *Nova empresa* (`/empresas/nova/`) e pediu para
+  preenchê-la com os dados da cliente cuja pasta está em
+  `C:\Users\Willyson Oliveira\OneDrive\Documentos\Clientes\CLIENTES DIVERSOS\ANA FLAVIA MEDEIROS DE OLIVEIRA SOARES`
+  (procurar ali o cartão CNPJ e documentos com RAT/FAP/FPAS/sindicato). A sessão da nuvem não alcança
+  essa pasta; por isso ele vai continuar numa conversa no próprio PC. Conferir se ela tem CNPJ
+  (MEI/empresa individual); se for empregadora pessoa física (doméstica), o FolhaWeb não atende.
+- Orientações já dadas para o cadastro: manter **Produção restrita (testes)**; deixar **desmarcado**
+  "empresa já cadastrada no eSocial por outro sistema" enquanto estiver em testes (o ambiente de testes
+  começa vazio e precisa do S-1000/S-1005/S-1020); `transmissor_cnpj` em branco se o certificado for
+  da própria empresa, ou o CNPJ do escritório se for o certificado do escritório com procuração.
+  Ainda não se sabe de quem é o certificado A1.
+- Ele também mexe na pasta de clientes pelo Chrome/Explorer; a sessão da nuvem só vê prints.
 - A sessão da nuvem **não tinha acesso ao PC dele**: `list_computer_folders` voltava vazio. Por isso
   tudo foi feito por instruções.
 
@@ -210,6 +222,11 @@ Pendências com o usuário:
 - [ ] Testar o eSocial em **produção restrita** (ambiente 2) com o certificado real. **Isso nunca foi
       testado contra o webservice real.**
 - [ ] Combinar uma rotina de backup do `db.sqlite3` (pendrive ou Google Drive).
+
+Melhoria sugerida (ainda não feita): hoje `esocial_ja_iniciado` (empresa) e `esocial_ja_cadastrado`
+(funcionário) pulam os eventos de cadastro em qualquer ambiente (`esocial/servico.py`). Em produção
+restrita isso faz o governo recusar tudo, porque lá a empresa não existe. O ideal é essas opções só
+valerem quando `ambiente_esocial == 1` (Produção).
 
 Pontos para o contador confirmar (também no README):
 - naturezas de férias 1015/1016/1017/9221;
