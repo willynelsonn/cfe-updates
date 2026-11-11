@@ -106,3 +106,31 @@ class ComandosServidorTests(TestCase):
             con = sqlite3.connect(copia)
             self.assertEqual(con.execute("select x from t").fetchone()[0], 42)
             con.close()
+
+
+class ConfigurarDominioTests(TestCase):
+    def test_grava_tunel_libera_dominio_e_salva_endereco(self):
+        import json
+
+        from django.core.management.base import CommandError
+
+        with tempfile.TemporaryDirectory() as tmp, override_settings(BASE_DIR=Path(tmp)):
+            raiz = Path(tmp)
+            (raiz / ".env").write_text(
+                "FOLHA_SECRET_KEY=x\nFOLHA_ALLOWED_HOSTS=localhost,127.0.0.1\nFOLHA_CSRF_TRUSTED_ORIGINS=\n",
+                encoding="utf-8")
+            cred = raiz / "cred.json"
+            cred.write_text(json.dumps({"TunnelID": "abc-123"}), encoding="utf-8")
+            for _ in range(2):  # rodar de novo não duplica
+                call_command("configurar_dominio", "https://Folha.Exemplo.com.br/", "--credenciais", str(cred),
+                             stdout=StringIO())
+            env = (raiz / ".env").read_text(encoding="utf-8")
+            self.assertIn("FOLHA_ALLOWED_HOSTS=localhost,127.0.0.1,folha.exemplo.com.br\n", env)
+            self.assertIn("FOLHA_CSRF_TRUSTED_ORIGINS=https://folha.exemplo.com.br\n", env)
+            yml = (raiz / "tools" / "cloudflared.yml").read_text(encoding="utf-8")
+            self.assertIn("tunnel: abc-123", yml)
+            self.assertIn("hostname: folha.exemplo.com.br", yml)
+            self.assertIn("service: http://127.0.0.1:8000", yml)
+            self.assertEqual((raiz / "ENDERECO.txt").read_text(), "https://folha.exemplo.com.br\n")
+            with self.assertRaises(CommandError):
+                call_command("configurar_dominio", "não é domínio", "--credenciais", str(cred), stdout=StringIO())

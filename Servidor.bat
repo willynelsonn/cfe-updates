@@ -130,6 +130,7 @@ if errorlevel 1 (
 )
 :temtunel
 if defined TOKEN goto tunelfixo
+if exist "tools\cloudflared.yml" goto tuneldominio
 
 echo  [7/7] Abrindo o endereco provisorio na internet...
 del "tools\tunel.log" "tools\tunel-saida.log" >nul 2>nul
@@ -152,6 +153,14 @@ echo    Ele tambem fica salvo no arquivo ENDERECO.txt.
 echo    ATENCAO: este endereco provisorio muda sempre que o servidor
 echo    reinicia. Para um endereco fixo, veja o README ^(dominio proprio^).
 echo  ==============================================================
+goto servir
+
+:tuneldominio
+echo  [7/7] Ligando o tunel do seu dominio proprio...
+start "" /b cmd /c "tools\cloudflared.exe tunnel --no-autoupdate --logfile tools\tunel.log --config tools\cloudflared.yml run >nul 2>&1"
+set /p ENDERECO=<"ENDERECO.txt"
+echo.
+echo  Pronto: o FolhaWeb esta em %ENDERECO%
 goto servir
 
 :tunelfixo

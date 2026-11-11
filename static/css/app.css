@@ -471,6 +471,36 @@ pre.xml { background: #121214; color: #e8e6e1; padding: 16px; border-radius: var
   *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
   @view-transition { navigation: none; }
 }
+/* ---- Relatórios ---------------------------------------------------------- */
+.voltar { display: inline-block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.botoes { display: flex; gap: 10px; flex-wrap: wrap; }
+.relatorios-grupo h2 { font-size: 15px; margin: 8px 0 12px; color: var(--text-2); }
+a.relatorio-cartao { color: var(--text); text-decoration: none; transition: transform var(--t-rapido), border-color var(--t-rapido); }
+a.relatorio-cartao:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+a.relatorio-cartao h3 { display: flex; align-items: center; gap: 8px; }
+.filtros-relatorio { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: flex-end; }
+.filtros-relatorio .campo { min-width: 180px; flex: 0 1 260px; }
+.relatorio-cab { margin-bottom: 16px; }
+.relatorio-cab h2 { margin: 6px 0 2px; font-size: 22px; }
+.relatorio-kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.relatorio-kpis .valor { font-size: 20px; }
+.tabela-rolagem { overflow-x: auto; }
+.relatorio .tabela-relatorio td, .relatorio .tabela-relatorio th { padding: 7px 8px; font-size: 13px; }
+@media screen { .relatorio-cab h2 { display: none; } }
+.tabela-relatorio tbody tr:nth-child(even) td { background: var(--surface-2); }
+.relatorio-nota { max-width: 820px; }
+@media print {
+  .relatorio .card { border: 0; box-shadow: none; padding: 0; margin: 0 0 14px; break-inside: auto; }
+  .relatorio-secao .card-cab { break-after: avoid; }
+  .relatorio .tabela-relatorio td, .relatorio .tabela-relatorio th { padding: 3px 5px; font-size: 9pt; color: #000; }
+  .tabela-relatorio thead { display: table-header-group; }
+  .tabela-relatorio tr { break-inside: avoid; }
+  .tabela-rolagem { overflow: visible; }
+  .relatorio-kpis { display: flex; flex-wrap: wrap; gap: 8px; }
+  .relatorio-kpis .kpi { border: 1px solid #999; box-shadow: none; padding: 6px 10px; }
+  .relatorio-kpis .valor { font-size: 12pt; }
+}
+
 @media print {
   .topnav, .nao-imprimir, .msg, .folha-movel { display: none !important; }
   .conteudo { padding: 0; max-width: none; } body { background: #fff; }

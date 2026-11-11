@@ -91,14 +91,22 @@ O registro fica em `tools\servidor.log`. Para desfazer: `InstalarNoServidor.bat 
 é provisório e muda sempre que o servidor reinicia. Para um endereço fixo, como
 `folha.seudominio.com.br`:
 
-1. Crie uma conta grátis na [Cloudflare](https://dash.cloudflare.com/sign-up) e adicione o seu domínio.
-2. Em [Cloudflare One](https://one.dash.cloudflare.com/) › **Networks › Tunnels**, crie um túnel do
-   tipo *Cloudflared*, dê um nome e copie o **token** (o texto longo depois de `--token`).
-3. Em **Public hostname**, escolha o subdomínio e o serviço `HTTP` › `localhost:8000`.
-4. No arquivo `.env` do servidor, cole o token em `FOLHA_CLOUDFLARE_TOKEN=` e acrescente o domínio:
-   `FOLHA_ALLOWED_HOSTS=localhost,127.0.0.1,folha.seudominio.com.br` e
-   `FOLHA_CSRF_TRUSTED_ORIGINS=https://folha.seudominio.com.br`.
-5. Feche e abra o `Servidor.bat` de novo.
+1. Crie uma conta grátis na [Cloudflare](https://dash.cloudflare.com/sign-up), clique em
+   **Add a domain**, digite o seu domínio e escolha o plano **Free**.
+2. A Cloudflare mostra dois servidores DNS (ex.: `ana.ns.cloudflare.com`). No
+   [Registro.br](https://registro.br), abra o domínio › **DNS › Alterar servidores DNS** e troque
+   pelos dois da Cloudflare. **Antes, confira na Cloudflare se os registros MX e TXT do seu e-mail
+   foram copiados**; se faltar algum, adicione lá, senão o e-mail do domínio para de funcionar.
+3. Espere o domínio aparecer como **Active** na Cloudflare (de minutos a algumas horas).
+4. No servidor, dê dois cliques em **`ConfigurarDominio.bat`**, digite o endereço
+   (ex.: `folha.seudominio.com.br`) e autorize no navegador que abrir. Ele cria o túnel, aponta o
+   endereço e ajusta o `.env` sozinho.
+5. Feche e abra o `Servidor.bat` de novo (ou reinicie o servidor, se usou o instalador).
+
+Alternativa manual: crie o túnel em [Cloudflare One](https://one.dash.cloudflare.com/) ›
+**Networks › Tunnels**, aponte o *Public hostname* para `http://localhost:8000`, cole o token em
+`FOLHA_CLOUDFLARE_TOKEN=` no `.env` e acrescente o domínio em `FOLHA_ALLOWED_HOSTS` e
+`FOLHA_CSRF_TRUSTED_ORIGINS`.
 
 **Segurança já ligada no modo servidor:** HTTPS pela Cloudflare, cookies seguros, sessão que expira
 em 8 horas, bloqueio de 15 minutos após 5 senhas erradas (por usuário e por IP), proteção contra
@@ -164,6 +172,19 @@ No Windows, use o `Servidor.bat` (item acima). Em outro servidor, use as variáv
 `python manage.py backup` gera um `.zip` com o banco, os certificados e o `.env` na pasta `backups`.
 **Faça backup do banco e da pasta de certificados**: a senha do certificado é cifrada com
 a `FOLHA_SECRET_KEY`. Se ela mudar, será preciso reenviar o certificado.
+
+## Relatórios
+
+Menu **Relatórios**: todos podem ser impressos, salvos em PDF (Imprimir › Salvar como PDF) ou
+baixados para o Excel.
+
+- **Folha do mês:** resumo por rubrica, folha analítica (todos os holerites), relação de líquidos
+  com dados bancários, INSS (empregados e patronal), IRRF, FGTS, encargos e guias.
+- **Anuais:** ficha financeira (mês a mês por rubrica), resumo anual com custo total, informe de
+  rendimentos (conferência para o IR), 13º salário, férias e rescisões do ano.
+- **Controle:** provisão de férias e 13º com encargos, controle de férias vencidas/a vencer,
+  contratos de experiência a vencer e custos da equipe.
+- **Pessoas:** relação de funcionários, admissões e desligamentos, aniversariantes e dependentes.
 
 ## Roteiro de uso
 

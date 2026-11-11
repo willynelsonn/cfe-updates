@@ -566,3 +566,81 @@ def custos(request):
         "aliq_encargos": aliq, "partes_encargos": partes,
         "media": (total / len(lista)) if lista else Decimal("0"),
     })
+
+
+# ---------------------------------------------------------------------------
+# Relatórios
+# ---------------------------------------------------------------------------
+def _filtros_relatorio(request, tipo):
+    from .relatorios import Filtros
+
+    hoje = timezone.localdate()
+    empresa = request.empresa
+    comps = Competencia.objects.filter(empresa=empresa, holerites__isnull=False).distinct()
+    f = Filtros()
+    pk = request.GET.get("competencia")
+    if pk and pk.isdigit():
+        f.competencia = comps.filter(pk=pk).first()
+    if f.competencia is None and "competencia" in tipo.filtros:
+        f.competencia = comps.filter(tipo="mensal").first() or comps.first()
+
+    def inteiro(nome, padrao, minimo, maximo):
+        try:
+            valor = int(request.GET.get(nome, padrao))
+        except ValueError:
+            return padrao
+        return valor if minimo <= valor <= maximo else padrao
+
+    f.ano = inteiro("ano", f.competencia.ano if f.competencia else hoje.year, 2000, 2100)
+    padrao_mes = 0 if "mes_opcional" in tipo.filtros else hoje.month
+    f.mes = inteiro("mes", padrao_mes, 0 if "mes_opcional" in tipo.filtros else 1, 12)
+    fpk = request.GET.get("funcionario")
+    if fpk and fpk.isdigit():
+        f.funcionario = Funcionario.objects.filter(empresa=empresa, pk=fpk).first()
+    if request.GET.get("situacao") in {"ativos", "desligados", "todos"}:
+        f.situacao = request.GET["situacao"]
+    return f, comps
+
+
+@login_required
+def relatorios(request):
+    from .relatorios import GRUPOS, RELATORIOS
+
+    if request.empresa is None:
+        return redirect("empresas:nova")
+    grupos = [(g, [t for t in RELATORIOS if t.grupo == g]) for g in GRUPOS]
+    ultima = Competencia.objects.filter(empresa=request.empresa, holerites__isnull=False).distinct().first()
+    return render(request, "folha/relatorios.html", {"grupos": grupos, "ultima": ultima})
+
+
+@login_required
+def relatorio(request, slug):
+    from .relatorios import MESES, POR_SLUG, para_csv
+
+    if request.empresa is None:
+        return redirect("empresas:nova")
+    tipo = POR_SLUG.get(slug)
+    if tipo is None:
+        raise Http404
+    f, comps = _filtros_relatorio(request, tipo)
+    rel = tipo.funcao(request.empresa, f)
+    if request.GET.get("formato") == "csv":
+        resp = HttpResponse(para_csv(rel, request.empresa), content_type="text/csv; charset=utf-8")
+        resp["Content-Disposition"] = f'attachment; filename="{slug}-{timezone.localdate():%Y%m%d}.csv"'
+        return resp
+    hoje = timezone.localdate()
+    return render(request, "folha/relatorio.html", {
+        "tipo": tipo, "rel": rel, "f": f, "competencias": comps,
+        "anos": range(hoje.year + 1, max(hoje.year - 8, 2000) - 1, -1),
+        "meses": list(enumerate(MESES))[1:],
+        "funcionarios": Funcionario.objects.filter(empresa=request.empresa).order_by("nome"),
+        "query_csv": _query_com(request, formato="csv"),
+        "gerado_em": timezone.localtime(),
+    })
+
+
+def _query_com(request, **extra):
+    q = request.GET.copy()
+    for k, v in extra.items():
+        q[k] = v
+    return q.urlencode()
