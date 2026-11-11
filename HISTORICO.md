@@ -48,8 +48,10 @@ O usuário sempre pediu **"crie o PR e faça o merge"** ao fim de cada etapa.
   fraca e a orientação de usar 8+ caracteres com letras e números; o resultado foi "Superuser created
   successfully".
 - Depois disse que "não abriu o site". Causa provável: a janela do `FolhaWeb.bat` tinha sido fechada.
-  A orientação foi rodar `.\FolhaWeb.bat` no PowerShell e acessar `http://127.0.0.1:8000`. **Não houve
-  confirmação de que funcionou**: vale conferir isso primeiro na conversa nova.
+  A orientação foi rodar `.\FolhaWeb.bat` no PowerShell e acessar `http://127.0.0.1:8000`.
+- **Confirmado em 11/11/2026:** o sistema abriu no Chrome dele em `http://127.0.0.1:8000` (print do Painel).
+  Ele estava logado como `admin` ("Administrador") na empresa de demonstração "Padaria Pão Quente",
+  ou seja, os dados de teste (`dados_demo`) foram carregados no banco dele.
 - Ainda **não cadastrou** a empresa real nem funcionários reais.
 - A sessão da nuvem **não tinha acesso ao PC dele**: `list_computer_folders` voltava vazio. Por isso
   tudo foi feito por instruções.
@@ -202,7 +204,7 @@ python manage.py test        # 76 testes, todos passando no último commit
 ## 6. O que falta / próximos passos
 
 Pendências com o usuário:
-- [ ] Confirmar que o sistema abre no PC dele (`FolhaWeb.bat` aberto e `http://127.0.0.1:8000`).
+- [x] Confirmar que o sistema abre no PC dele (`FolhaWeb.bat` aberto e `http://127.0.0.1:8000`). Feito em 11/11/2026.
 - [ ] Cadastrar a empresa real: CNPJ, regime, RAT/FAP, certificado A1 `.pfx` e senha.
 - [ ] Cadastrar cargos e funcionários e calcular a primeira folha.
 - [ ] Testar o eSocial em **produção restrita** (ambiente 2) com o certificado real. **Isso nunca foi
