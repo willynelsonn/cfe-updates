@@ -6,6 +6,7 @@
   <h1>{% if c.decimo_terceiro %}13º salário de {{ c.ano|stringformat:"d" }}{% else %}Folha de {{ c }}{% endif %} <span class="tag {{ c.status }}">{{ c.get_status_display }}</span></h1>
   <div class="acoes">
     {% if holerites %}<a class="btn" href="{% url 'folha:holerites_impressao' c.pk %}" target="_blank" title="Abre todos os holerites prontos para imprimir ou salvar em PDF">Imprimir holerites</a>{% endif %}
+    {% if holerites %}<a class="btn" href="{% url 'folha:relatorio' 'resumo-folha' %}?competencia={{ c.pk }}" title="Resumo, folha analítica, líquidos, INSS, IRRF, FGTS e guias desta folha">Relatórios</a>{% endif %}
     {% if c.editavel and not c.decimo_terceiro %}<a class="btn" href="{% url 'folha:competencia_editar' c.pk %}" title="Muda a data de pagamento, feriados ou a 1ª parcela do 13º">Alterar datas</a>{% endif %}
   </div>
 </div>

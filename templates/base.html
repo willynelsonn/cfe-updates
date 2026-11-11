@@ -32,11 +32,12 @@
         <a href="{% url 'pessoal:lista' %}" class="{% if ns == 'pessoal' and nome != 'cargos' and nome != 'cargo_editar' %}ativo{% endif %}">{% icone "pessoas" "sm" %}<span>Pessoas</span></a>
         <a href="{% url 'folha:ferias' %}" class="{% if nome|slice:':6' == 'ferias' %}ativo{% endif %}">{% icone "ferias" "sm" %}<span>Férias</span></a>
         <a href="{% url 'folha:rescisoes' %}" class="{% if nome|slice:':8' == 'rescisao' or nome == 'rescisoes' %}ativo{% endif %}">{% icone "saida" "sm" %}<span>Rescisões</span></a>
-        <a href="{% url 'folha:custos' %}" class="{% if nome == 'custos' %}ativo{% endif %}">{% icone "custo" "sm" %}<span>Custos</span></a>
+        <a href="{% url 'folha:relatorios' %}" class="{% if nome == 'relatorios' or nome == 'relatorio' %}ativo{% endif %}">{% icone "lista" "sm" %}<span>Relatórios</span></a>
         <a href="{% url 'esocial:eventos' %}" class="{% if ns == 'esocial' and nome != 'guia' %}ativo{% endif %}">{% icone "enviar" "sm" %}<span>eSocial</span></a>
         <div class="mais">
           <button type="button" aria-expanded="false" aria-controls="menu-mais" data-alternar="menu-mais">Mais {% icone "seta" "sm" %}</button>
           <div class="menu-mais" id="menu-mais" role="menu">
+            <a href="{% url 'folha:custos' %}" class="{% if nome == 'custos' %}ativo{% endif %}">{% icone "custo" %} Custos da equipe</a>
             <a href="{% url 'folha:decimo_terceiro' %}" class="{% if nome == 'decimo_terceiro' %}ativo{% endif %}">{% icone "presente" %} 13º salário</a>
             <a href="{% url 'esocial:guia' %}" class="{% if nome == 'guia' %}ativo{% endif %}">{% icone "recibo" %} DCTFWeb e FGTS</a>
             <a href="{% url 'pessoal:cargos' %}" class="{% if nome == 'cargos' %}ativo{% endif %}">{% icone "maleta" %} Cargos</a>
@@ -100,6 +101,7 @@
     <div class="sec">Pessoas e custos</div>
     <a href="{% url 'pessoal:lista' %}">{% icone "pessoas" %} Funcionários</a>
     <a href="{% url 'folha:custos' %}">{% icone "custo" %} Custos da equipe</a>
+    <a href="{% url 'folha:relatorios' %}">{% icone "lista" %} Relatórios</a>
     <a href="{% url 'pessoal:cargos' %}">{% icone "maleta" %} Cargos</a>
     <div class="sec">Governo e configurações</div>
     <a href="{% url 'esocial:eventos' %}">{% icone "enviar" %} eSocial</a>

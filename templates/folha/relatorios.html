@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Relatórios{% endblock %}
+{% block content %}
+<div class="topo">
+  <div><h1>Relatórios</h1>
+    <div class="subtitulo">Escolha um relatório. Todos podem ser impressos, salvos em PDF ou baixados para o Excel.</div></div>
+  {% if ultima %}<a class="btn" href="{% url 'folha:holerites_impressao' ultima.pk %}" target="_blank" title="Todos os holerites da última folha, prontos para imprimir">{% icone "imprimir" "sm" %} Holerites de {{ ultima }}</a>{% endif %}
+</div>
+{% if not ultima %}<div class="msg info" role="status">{% icone "info" %}<div>Os relatórios da folha aparecem depois que você calcular a primeira folha em <a href="{% url 'folha:competencias' %}">Folha</a>. Os de pessoas e controle já funcionam.</div></div>{% endif %}
+{% for grupo, tipos in grupos %}
+<section class="relatorios-grupo">
+  <h2>{{ grupo }}</h2>
+  <div class="acoes-grid">
+    {% for t in tipos %}
+    <a class="acao relatorio-cartao" href="{% url 'folha:relatorio' t.slug %}">
+      <h3>{% icone "lista" "sm" %} {{ t.titulo }}</h3>
+      <p>{{ t.descricao }}</p>
+    </a>
+    {% endfor %}
+    {% if grupo == "Controle" %}
+    <a class="acao relatorio-cartao" href="{% url 'folha:custos' %}">
+      <h3>{% icone "custo" "sm" %} Custos da equipe</h3>
+      <p>Quanto cada funcionário custa por mês, com encargos, provisões e benefícios.</p>
+    </a>
+    {% endif %}
+  </div>
+</section>
+{% endfor %}
+{% endblock %}
