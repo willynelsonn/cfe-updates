@@ -1,7 +1,10 @@
 from datetime import timedelta
 
+from django.contrib import messages
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
+from django.urls import reverse_lazy
 from django.utils import timezone
 
 from esocial.servico import situacao_fila
@@ -51,3 +54,19 @@ def dashboard(request):
         },
     })
     return render(request, "dashboard.html", dados)
+
+
+class AlterarSenhaView(auth_views.PasswordChangeView):
+    """Troca a própria senha (o Django já exige a senha atual e mantém a sessão aberta)."""
+
+    template_name = "form.html"
+    success_url = reverse_lazy("dashboard")
+    extra_context = {
+        "titulo": "Alterar senha",
+        "explicacao": "Digite a senha atual e a nova duas vezes. Use 12 caracteres ou mais, misturando letras e números.",
+        "botao": "Alterar senha",
+    }
+
+    def form_valid(self, form):
+        messages.success(self.request, "Senha alterada. Use a nova senha no próximo acesso.")
+        return super().form_valid(form)

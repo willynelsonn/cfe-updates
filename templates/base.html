@@ -83,6 +83,7 @@
             <b>{{ user.get_full_name|default:user.username }}</b>
             <div class="dica" style="margin-bottom:12px">{{ empresa_ativa|default:"" }}</div>
             {% include "_preferencias.html" %}
+            <a class="btn pequeno" href="{% url 'alterar_senha' %}" style="margin-bottom:8px">{% icone "escudo" "sm" %} Alterar senha</a>
             <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn pequeno" type="submit">{% icone "sair" "sm" %} Sair</button></form>
           </div>
         </div>
