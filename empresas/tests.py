@@ -1,9 +1,11 @@
 """Testes da publicação no servidor: bloqueio de login, backup e .env de produção."""
 
+import os
 import tempfile
 import zipfile
 from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
@@ -57,6 +59,16 @@ class BloqueioLoginTests(TestCase):
 
 
 class ComandosServidorTests(TestCase):
+    def test_garantir_superusuario_cria_e_depois_troca_a_senha(self):
+        with patch.dict(os.environ, {"DJANGO_SUPERUSER_USERNAME": "dono", "DJANGO_SUPERUSER_PASSWORD": "primeira-123"}):
+            call_command("garantir_superusuario", stdout=StringIO())
+        with patch.dict(os.environ, {"DJANGO_SUPERUSER_USERNAME": "dono", "DJANGO_SUPERUSER_PASSWORD": "segunda-456"}):
+            call_command("garantir_superusuario", stdout=StringIO())
+        dono = User.objects.get(username="dono")
+        self.assertTrue(dono.is_superuser)
+        self.assertTrue(dono.check_password("segunda-456"))
+        self.assertEqual(User.objects.count(), 1)
+
     def test_preparar_servidor_cria_env_uma_vez_so(self):
         with tempfile.TemporaryDirectory() as tmp, override_settings(BASE_DIR=Path(tmp)):
             call_command("preparar_servidor", stdout=StringIO())
