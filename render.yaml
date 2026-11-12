@@ -8,7 +8,7 @@ services:
     region: virginia
     branch: main
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: python manage.py migrate --noinput && (python manage.py createsuperuser --noinput --email '' || true) && python manage.py servir --host 0.0.0.0 --nuvem
+    startCommand: python manage.py migrate --noinput && python manage.py garantir_superusuario && python manage.py servir --host 0.0.0.0 --nuvem
     healthCheckPath: /entrar/
     envVars:
       - key: PYTHON_VERSION
