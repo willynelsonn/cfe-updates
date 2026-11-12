@@ -4,12 +4,13 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 
 from .seguranca import LoginView
-from .views import dashboard
+from .views import AlterarSenhaView, dashboard
 
 urlpatterns = [
     path("", dashboard, name="dashboard"),
     path("entrar/", LoginView.as_view(), name="login"),
     path("sair/", auth_views.LogoutView.as_view(), name="logout"),
+    path("conta/senha/", AlterarSenhaView.as_view(), name="alterar_senha"),
     path("empresas/", include("empresas.urls")),
     path("funcionarios/", include("pessoal.urls")),
     path("folha/", include("folha.urls")),

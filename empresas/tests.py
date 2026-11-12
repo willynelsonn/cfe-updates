@@ -59,15 +59,33 @@ class BloqueioLoginTests(TestCase):
 
 
 class ComandosServidorTests(TestCase):
-    def test_garantir_superusuario_cria_e_depois_troca_a_senha(self):
-        with patch.dict(os.environ, {"DJANGO_SUPERUSER_USERNAME": "dono", "DJANGO_SUPERUSER_PASSWORD": "primeira-123"}):
-            call_command("garantir_superusuario", stdout=StringIO())
-        with patch.dict(os.environ, {"DJANGO_SUPERUSER_USERNAME": "dono", "DJANGO_SUPERUSER_PASSWORD": "segunda-456"}):
+    def test_garantir_superusuario_cria_mantem_e_so_redefine_quando_pedido(self):
+        amb = {"DJANGO_SUPERUSER_USERNAME": "dono", "DJANGO_SUPERUSER_PASSWORD": "primeira-123"}
+        with patch.dict(os.environ, amb):
             call_command("garantir_superusuario", stdout=StringIO())
         dono = User.objects.get(username="dono")
         self.assertTrue(dono.is_superuser)
-        self.assertTrue(dono.check_password("segunda-456"))
+        self.assertTrue(dono.check_password("primeira-123"))
+        # Senha trocada pela tela não volta a ser a do painel numa nova publicação.
+        dono.set_password("trocada-na-tela-789")
+        dono.save()
+        with patch.dict(os.environ, {**amb, "DJANGO_SUPERUSER_PASSWORD": "segunda-456"}):
+            call_command("garantir_superusuario", stdout=StringIO())
+        self.assertTrue(User.objects.get(username="dono").check_password("trocada-na-tela-789"))
+        with patch.dict(os.environ, {**amb, "DJANGO_SUPERUSER_PASSWORD": "segunda-456", "FOLHA_REDEFINIR_SENHA": "sim"}):
+            call_command("garantir_superusuario", stdout=StringIO())
+        self.assertTrue(User.objects.get(username="dono").check_password("segunda-456"))
         self.assertEqual(User.objects.count(), 1)
+
+    def test_tela_alterar_senha_troca_a_senha_e_mantem_logado(self):
+        User.objects.create_user("carla", password="antiga-senha-123")
+        self.client.login(username="carla", password="antiga-senha-123")
+        self.assertContains(self.client.get("/conta/senha/"), "Alterar senha")
+        r = self.client.post("/conta/senha/", {"old_password": "antiga-senha-123",
+                                               "new_password1": "NovaSenhaForte2026", "new_password2": "NovaSenhaForte2026"})
+        self.assertRedirects(r, "/", fetch_redirect_response=False)
+        self.assertTrue(User.objects.get(username="carla").check_password("NovaSenhaForte2026"))
+        self.assertIn("_auth_user_id", self.client.session)
 
     def test_preparar_servidor_cria_env_uma_vez_so(self):
         with tempfile.TemporaryDirectory() as tmp, override_settings(BASE_DIR=Path(tmp)):

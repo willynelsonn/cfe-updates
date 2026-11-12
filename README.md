@@ -132,8 +132,10 @@ deixar nenhum computador ligado. O plano grátis dos dois serve para começar.
 2. **New + › Blueprint**, escolha o repositório. O Render lê o arquivo `render.yaml` e pede:
    - `FOLHA_DATABASE_URL`: o endereço do Supabase do passo 1.3;
    - `DJANGO_SUPERUSER_USERNAME` e `DJANGO_SUPERUSER_PASSWORD`: o usuário e a senha para entrar no sistema.
-     Esqueceu a senha? Troque o valor em Render › Environment e salve: a cada publicação o sistema
-     acerta a senha desse usuário com o que estiver ali.
+     Esses valores só criam o usuário na primeira vez. Depois, troque a senha no próprio sistema, no
+     menu da conta › **Alterar senha**. Esqueceu a senha? Em Render › Environment ponha a senha nova
+     em `DJANGO_SUPERUSER_PASSWORD`, acrescente `FOLHA_REDEFINIR_SENHA` = `sim` e salve; depois de
+     entrar, apague o `FOLHA_REDEFINIR_SENHA`.
 3. **Apply**. Em uns 5 minutos o site fica no endereço `https://folhaweb-….onrender.com` mostrado no painel.
 
 Cada `git push` na `main` atualiza o site sozinho. O sistema cria as tabelas, o primeiro usuário e
