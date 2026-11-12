@@ -91,7 +91,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 #    (postgresql://usuario:senha@host:5432/postgres). Usado na nuvem.
 #  - FOLHA_DB_ENGINE=postgres + FOLHA_DB_*: PostgreSQL informado por partes.
 #  - Sem nada: SQLite no arquivo db.sqlite3 (uso no próprio computador).
-DATABASE_URL = os.environ.get("FOLHA_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
+# Espaços, quebras de linha e aspas coladas junto do endereço são ignorados.
+DATABASE_URL = (os.environ.get("FOLHA_DATABASE_URL") or os.environ.get("DATABASE_URL", "")).strip().strip("\"'`").strip()
 
 
 def _banco_pela_url(url: str) -> dict:
@@ -99,7 +100,10 @@ def _banco_pela_url(url: str) -> dict:
 
     u = urlparse(url)
     if u.scheme not in {"postgres", "postgresql"}:
-        raise RuntimeError("FOLHA_DATABASE_URL deve começar com postgresql://")
+        raise RuntimeError(
+            "FOLHA_DATABASE_URL deve começar com postgresql:// "
+            "(cole o endereço inteiro do Supabase, com a senha no lugar de [YOUR-PASSWORD])."
+        )
     opcoes = {k: v[-1] for k, v in parse_qs(u.query).items()}
     opcoes.setdefault("sslmode", "require")
     banco = {
