@@ -86,8 +86,43 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# SQLite por padrão; para produção use PostgreSQL definindo FOLHA_DB_* .
-if os.environ.get("FOLHA_DB_ENGINE") == "postgres":
+# Banco de dados:
+#  - FOLHA_DATABASE_URL (ou DATABASE_URL): endereço completo do PostgreSQL, como o do Supabase
+#    (postgresql://usuario:senha@host:5432/postgres). Usado na nuvem.
+#  - FOLHA_DB_ENGINE=postgres + FOLHA_DB_*: PostgreSQL informado por partes.
+#  - Sem nada: SQLite no arquivo db.sqlite3 (uso no próprio computador).
+DATABASE_URL = os.environ.get("FOLHA_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
+
+
+def _banco_pela_url(url: str) -> dict:
+    from urllib.parse import parse_qs, unquote, urlparse
+
+    u = urlparse(url)
+    if u.scheme not in {"postgres", "postgresql"}:
+        raise RuntimeError("FOLHA_DATABASE_URL deve começar com postgresql://")
+    opcoes = {k: v[-1] for k, v in parse_qs(u.query).items()}
+    opcoes.setdefault("sslmode", "require")
+    banco = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": unquote(u.path.lstrip("/")) or "postgres",
+        "USER": unquote(u.username or ""),
+        "PASSWORD": unquote(u.password or ""),
+        "HOST": u.hostname or "",
+        "PORT": str(u.port or 5432),
+        "OPTIONS": opcoes,
+        "CONN_MAX_AGE": 60,
+        "CONN_HEALTH_CHECKS": True,
+    }
+    if u.port == 6543:
+        # Pooler do Supabase em modo "transaction": sem conexões persistentes nem cursores no servidor.
+        banco["CONN_MAX_AGE"] = 0
+        banco["DISABLE_SERVER_SIDE_CURSORS"] = True
+    return banco
+
+
+if DATABASE_URL:
+    DATABASES = {"default": _banco_pela_url(DATABASE_URL)}
+elif os.environ.get("FOLHA_DB_ENGINE") == "postgres":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -130,6 +165,8 @@ STORAGES = {
 
 # Certificados A1 (.pfx) ficam fora da pasta pública.
 PRIVATE_MEDIA_ROOT = Path(os.environ.get("FOLHA_PRIVATE_MEDIA", BASE_DIR / "private_media"))
+# Na nuvem o disco é apagado a cada atualização: os certificados ficam dentro do banco.
+FOLHA_ARQUIVOS_NO_BANCO = env_bool("FOLHA_ARQUIVOS_NO_BANCO", bool(DATABASE_URL))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

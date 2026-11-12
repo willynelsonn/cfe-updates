@@ -11,7 +11,26 @@ from .validators import cnpj_valido, formatar_cnpj, normalizar_cnpj, so_digitos
 
 
 def _storage_privado():
+    if settings.FOLHA_ARQUIVOS_NO_BANCO:
+        from .armazenamento import BancoStorage
+
+        return BancoStorage()
     return FileSystemStorage(location=settings.PRIVATE_MEDIA_ROOT)
+
+
+class ArquivoPrivado(models.Model):
+    """Arquivo guardado no banco (certificados), para hospedagens sem disco permanente."""
+
+    nome = models.CharField(max_length=255, unique=True)
+    conteudo = models.BinaryField()
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "arquivo privado"
+        verbose_name_plural = "arquivos privados"
+
+    def __str__(self):
+        return self.nome
 
 
 def _caminho_certificado(instance, filename):

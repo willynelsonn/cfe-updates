@@ -134,3 +134,39 @@ class ConfigurarDominioTests(TestCase):
             self.assertEqual((raiz / "ENDERECO.txt").read_text(), "https://folha.exemplo.com.br\n")
             with self.assertRaises(CommandError):
                 call_command("configurar_dominio", "não é domínio", "--credenciais", str(cred), stdout=StringIO())
+
+
+class NuvemTests(TestCase):
+    def test_endereco_do_supabase_vira_configuracao_do_banco(self):
+        from config.settings import _banco_pela_url
+
+        b = _banco_pela_url("postgresql://postgres.abc:S3nh%40%23@aws-0-sa-east-1.pooler.supabase.com:5432/postgres")
+        self.assertEqual(b["ENGINE"], "django.db.backends.postgresql")
+        self.assertEqual(b["USER"], "postgres.abc")
+        self.assertEqual(b["PASSWORD"], "S3nh@#")
+        self.assertEqual(b["HOST"], "aws-0-sa-east-1.pooler.supabase.com")
+        self.assertEqual(b["OPTIONS"]["sslmode"], "require")
+        self.assertGreater(b["CONN_MAX_AGE"], 0)
+        t = _banco_pela_url("postgres://u:p@h:6543/postgres?sslmode=verify-full")
+        self.assertEqual(t["CONN_MAX_AGE"], 0)
+        self.assertTrue(t["DISABLE_SERVER_SIDE_CURSORS"])
+        self.assertEqual(t["OPTIONS"]["sslmode"], "verify-full")
+
+    def test_certificado_guardado_no_banco(self):
+        from django.core.files.base import ContentFile
+
+        from empresas.armazenamento import BancoStorage
+        from empresas.models import ArquivoPrivado
+
+        st = BancoStorage()
+        nome = st.save("certificados/empresa_1_cert.pfx", ContentFile(b"\x30\x82conteudo"))
+        self.assertTrue(st.exists(nome))
+        self.assertEqual(st.size(nome), len(b"\x30\x82conteudo"))
+        with st.open(nome, "rb") as fh:
+            self.assertEqual(fh.read(), b"\x30\x82conteudo")
+        self.assertEqual(st.listdir("certificados"), ([], ["empresa_1_cert.pfx"]))
+        outro = st.save("certificados/empresa_1_cert.pfx", ContentFile(b"novo"))
+        self.assertNotEqual(outro, nome)  # não sobrescreve sem querer: gera outro nome
+        st.delete(nome)
+        self.assertFalse(st.exists(nome))
+        self.assertEqual(ArquivoPrivado.objects.count(), 1)
