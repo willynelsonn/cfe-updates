@@ -31,8 +31,10 @@ Leia também o `README.md`, que é o manual de uso e instalação.
 6. "Publica na internet". Escolheu **hospedar no próprio servidor** com Cloudflare Tunnel: daí vieram
    o `Servidor.bat`, o `InstalarNoServidor.bat` e, depois, o `ConfigurarDominio.bat`.
 7. **"Todos os relatórios possíveis para a folha"**: central com 20 relatórios.
-8. **Decisão final (mais recente):** *"Quero rodar esse projeto dentro do meu PC, não na internet."*
-   O uso atual é **local**, com o `FolhaWeb.bat`. A parte de internet está pronta, mas não está em uso.
+8. Pediu para rodar só no PC (*"dentro do meu PC, não na internet"*) e depois mudou para
+   **"concluir o processo de postar o site no cloud + Supabase"**. Foi feito o suporte a **Render
+   (hospedagem) + Supabase (PostgreSQL)**, com o `render.yaml`. O Cloudflare não roda Django, então
+   foi usado o Render. A criação das contas e o deploy dependem do usuário (seção 4).
 
 O usuário sempre pediu **"crie o PR e faça o merge"** ao fim de cada etapa.
 
@@ -154,10 +156,28 @@ Funcionalidades (detalhe na tabela do README):
 ```bash
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 python manage.py migrate && python manage.py dados_demo && python manage.py runserver
-python manage.py test        # 76 testes, todos passando no último commit
+python manage.py test        # 78 testes, todos passando no último commit
 ```
 
-### Publicar na internet (pronto, mas NÃO está em uso; o usuário preferiu ficar local)
+### Nuvem: Render + Supabase (pedido mais recente; contas ainda não criadas)
+- O passo a passo está no README, em "Publicar na nuvem (Render + Supabase)".
+- `render.yaml` (Blueprint):
+  - roda `pip install` e `collectstatic`;
+  - na partida: `migrate`, `createsuperuser --noinput` (pelas variáveis `DJANGO_SUPERUSER_*`) e
+    `servir --host 0.0.0.0 --nuvem` (Waitress confiando no proxy do Render);
+  - região virginia, plano free.
+- `FOLHA_DATABASE_URL`: URI do Supabase (Session pooler, porta 5432). Também funciona o pooler 6543,
+  que desliga as conexões persistentes. SSL é obrigatório (`sslmode=require`).
+- Certificados A1 ficam no banco (`ArquivoPrivado` + `empresas/armazenamento.py`), ligados
+  automaticamente quando há `FOLHA_DATABASE_URL`.
+- Depois de cada `migrate` em PostgreSQL (`empresas/apps.py`), o sistema liga o RLS em todas as
+  tabelas e faz REVOKE para `anon`/`authenticated`. Assim a Data API do Supabase não expõe os dados.
+- Testado com PostgreSQL 16 local: suíte completa e login HTTPS atrás de proxy simulado.
+  **Não foi testado no Render nem no Supabase de verdade.**
+- Se o PC e a nuvem usarem o mesmo banco, use a mesma `FOLHA_SECRET_KEY`; senão a senha do
+  certificado não é lida.
+
+### Publicar a partir do próprio servidor (Cloudflare Tunnel; alternativa, não está em uso)
 - **`Servidor.bat`:**
   - cria o `.env` de produção (`preparar_servidor`), roda `collectstatic`, faz backup;
   - liga a fila do eSocial a cada 5 minutos (`processar_esocial --intervalo 300`);
@@ -202,6 +222,7 @@ python manage.py test        # 76 testes, todos passando no último commit
 ## 6. O que falta / próximos passos
 
 Pendências com o usuário:
+- [ ] Criar as contas no Supabase e no Render e fazer o deploy (README). Conferir o login no endereço `onrender.com`.
 - [ ] Confirmar que o sistema abre no PC dele (`FolhaWeb.bat` aberto e `http://127.0.0.1:8000`).
 - [ ] Cadastrar a empresa real: CNPJ, regime, RAT/FAP, certificado A1 `.pfx` e senha.
 - [ ] Cadastrar cargos e funcionários e calcular a primeira folha.
@@ -238,3 +259,5 @@ Funcionalidades ainda não feitas (ideias):
 | #4 | `FolhaWeb.bat` (atualiza e inicia com dois cliques) |
 | #5 | Publicação no servidor: `Servidor.bat`, instalador, segurança, backup, Waitress |
 | #6 | Central de 20 relatórios e `ConfigurarDominio.bat` |
+| #7 | Este `HISTORICO.md` |
+| #8 | Nuvem: Render + Supabase (`render.yaml`, banco por URL, certificados no banco, RLS) |

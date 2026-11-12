@@ -1,0 +1,34 @@
+# Implantação no Render (render.com) com o banco no Supabase.
+# No Render: New > Blueprint > escolha este repositório. Ele pede os valores marcados com "sync: false".
+services:
+  - type: web
+    name: folhaweb
+    runtime: python
+    plan: free
+    region: virginia
+    branch: main
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: python manage.py migrate --noinput && (python manage.py createsuperuser --noinput --email '' || true) && python manage.py servir --host 0.0.0.0 --nuvem
+    healthCheckPath: /entrar/
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: FOLHA_DEBUG
+        value: "false"
+      - key: FOLHA_SECRET_KEY
+        generateValue: true
+      - key: FOLHA_ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: FOLHA_CSRF_TRUSTED_ORIGINS
+        value: "https://*.onrender.com"
+      - key: FOLHA_COR_PADRAO
+        value: grafite
+      # Endereço do banco no Supabase: Project Settings > Database > Connection string > URI,
+      # modo "Session pooler" (porta 5432), com a senha do banco no lugar de [YOUR-PASSWORD].
+      - key: FOLHA_DATABASE_URL
+        sync: false
+      # Primeiro usuário do sistema (criado só se ainda não existir).
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false

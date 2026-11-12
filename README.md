@@ -114,6 +114,37 @@ a página ser aberta dentro de outro site e erros gravados em `folhaweb.log` sem
 técnicos na tela. Não use o usuário `admin`/`admin` dos dados de demonstração em um servidor
 publicado.
 
+## Publicar na nuvem (Render + Supabase)
+
+O sistema fica no **Render** (hospedagem) e os dados no **Supabase** (banco PostgreSQL). Não precisa
+deixar nenhum computador ligado. O plano grátis dos dois serve para começar.
+
+**1. Banco no Supabase**
+1. Entre em [supabase.com](https://supabase.com) › **Start your project** e use **Continue with GitHub**.
+2. **New project**: nome `folhaweb`. Em **Database Password** crie uma senha **só com letras e
+   números** e guarde. Em **Region** escolha **East US (North Virginia)**, a mesma região do Render,
+   para o sistema ficar rápido.
+3. Com o projeto criado, clique em **Connect** (no topo) › **Connection string** › **URI**, escolha
+   **Session pooler** e copie o endereço. Troque `[YOUR-PASSWORD]` pela senha do passo 2.
+
+**2. Site no Render**
+1. Entre em [render.com](https://render.com) com **GitHub** e autorize o repositório `cfe-updates`.
+2. **New + › Blueprint**, escolha o repositório. O Render lê o arquivo `render.yaml` e pede:
+   - `FOLHA_DATABASE_URL`: o endereço do Supabase do passo 1.3;
+   - `DJANGO_SUPERUSER_USERNAME` e `DJANGO_SUPERUSER_PASSWORD`: o usuário e a senha para entrar no sistema.
+3. **Apply**. Em uns 5 minutos o site fica no endereço `https://folhaweb-….onrender.com` mostrado no painel.
+
+Cada `git push` na `main` atualiza o site sozinho. O sistema cria as tabelas, o primeiro usuário e
+**fecha a API pública do Supabase** (RLS ligado e sem acesso para `anon`/`authenticated`), para
+ninguém ler os dados por fora. Os certificados A1 ficam guardados dentro do banco, porque o disco
+do Render é apagado a cada atualização.
+
+Limites do plano grátis: o Render "dorme" após 15 minutos sem acesso (a primeira abertura depois
+disso leva cerca de 1 minuto) e o Supabase pausa projetos sem uso por 7 dias (é só reativar no
+painel). A fila do eSocial anda enquanto o sistema estiver aberto no navegador. Domínio próprio:
+Render › Settings › Custom Domains; depois acrescente o domínio em `FOLHA_ALLOWED_HOSTS` e
+`FOLHA_CSRF_TRUSTED_ORIGINS`.
+
 ## Como rodar
 
 Requisitos: Python 3.11+.
