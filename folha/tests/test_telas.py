@@ -1,4 +1,5 @@
 from datetime import date
+from io import StringIO
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -72,7 +73,7 @@ class TelasTest(TestCase):
         self.assertContains(self.client.get(reverse("esocial:evento", args=[ev.pk])), "evtFechaEvPer")
 
     def test_paginas_principais_carregam(self):
-        call_command("dados_demo", stdout=open("/dev/null", "w"))
+        call_command("dados_demo", stdout=StringIO())
         comp = Competencia.objects.get(mes=10)
         func = Funcionario.objects.first()
         ferias = Ferias.objects.first()
