@@ -3,9 +3,11 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from esocial.servico import situacao_fila
 from folha import painel
@@ -70,3 +72,19 @@ class AlterarSenhaView(auth_views.PasswordChangeView):
     def form_valid(self, form):
         messages.success(self.request, "Senha alterada. Use a nova senha no próximo acesso.")
         return super().form_valid(form)
+
+
+@login_required
+@require_POST
+def salvar_preferencias(request):
+    from empresas.context_processors import CORES
+    from empresas.models import Preferencia
+
+    pref, _ = Preferencia.objects.get_or_create(usuario=request.user)
+    cor, tema = request.POST.get("cor"), request.POST.get("tema")
+    if cor in CORES:
+        pref.cor = cor
+    if tema in {"light", "dark", ""}:
+        pref.tema = tema
+    pref.save()
+    return HttpResponse(status=204)

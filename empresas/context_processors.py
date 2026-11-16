@@ -27,4 +27,10 @@ CORES = {"laranja", "azul", "verde", "roxo", "rosa", "grafite"}
 
 def aparencia(request):
     cor = getattr(settings, "FOLHA_COR_PADRAO", "laranja")
-    return {"cor_padrao": cor if cor in CORES else "laranja"}
+    ctx = {"cor_padrao": cor if cor in CORES else "laranja"}
+    user = getattr(request, "user", None)
+    if user is not None and user.is_authenticated:
+        from .models import Preferencia
+
+        ctx["preferencia"] = Preferencia.objects.filter(usuario=user).first()
+    return ctx
