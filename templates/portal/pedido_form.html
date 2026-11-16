@@ -15,6 +15,22 @@
   {% csrf_token %}
   {% if form.non_field_errors %}<div class="msg error" role="alert"><div>{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div></div>{% endif %}
   <div class="form-grid">{% for campo in form %}{% include "_campo.html" %}{% endfor %}</div>
+  {% if custo_url %}<div id="custo" aria-live="polite" style="margin-top:16px" hidden></div>{% endif %}
   <button class="btn primario grande" type="submit" style="width:100%;margin-top:20px" data-ocupado="Enviando">Enviar ao escritório</button>
 </form>
+{% if custo_url %}
+<script>
+(function () {
+  var campo = document.getElementById("id_salario"), caixa = document.getElementById("custo"), espera;
+  if (!campo || !window.fetch) return;
+  function atualizar() {
+    fetch("{{ custo_url }}?salario=" + encodeURIComponent(campo.value), {credentials: "same-origin"})
+      .then(function (r) { return r.ok ? r.text() : ""; })
+      .then(function (html) { caixa.innerHTML = html; caixa.hidden = !html.trim(); });
+  }
+  campo.addEventListener("input", function () { clearTimeout(espera); espera = setTimeout(atualizar, 400); });
+  if (campo.value) atualizar();
+})();
+</script>
+{% endif %}
 {% endblock %}

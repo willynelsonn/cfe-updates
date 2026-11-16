@@ -1,9 +1,13 @@
 """A dona faz pedidos pelo portal. Nada toca funcionário ou eSocial; nada de outra empresa aparece (404)."""
 
+from decimal import Decimal
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
 from esocial.models import Evento
+from folha.custo import custo_mensal
+from folha.templatetags.ui import moeda
 from folha.tests.fabrica import funcionario
 from pessoal.models import Funcionario
 from portal.anexos import anexar
@@ -127,3 +131,26 @@ class PedidosDonaTests(TestCase):
 
         self.client.force_login(User.objects.create_user("escritorio", password="x", is_staff=True))
         self.assertRedirects(self.client.get("/cliente/pedidos/"), "/", fetch_redirect_response=False)
+
+    def test_custo_estimado_do_contratei(self):
+        total = moeda(custo_mensal(self.a, Decimal("2500")).total)
+        r = self.client.get("/cliente/pedidos/custo/", {"salario": "2.500,00"})
+        self.assertContains(r, "estimativa")
+        self.assertContains(r, total)
+        self.assertEqual(self.client.get("/cliente/pedidos/custo/", {"salario": "abc"}).content, b"")
+        self.assertContains(self.client.get("/cliente/pedidos/novo/contratei/"), "/cliente/pedidos/custo/")
+        p = Pedido.objects.create(empresa=self.a, criado_por=self.dona_a, tipo="contratei",
+                                  respostas={"nome": "Ana Teste", "salario": "2500.00"})
+        r = self.client.get(f"/cliente/pedidos/{p.pk}/")
+        self.assertContains(r, "Custo estimado")
+        self.assertContains(r, f"{total} (estimativa)")
+
+    def test_custo_so_para_dona_de_empresa_ativa(self):
+        from django.contrib.auth.models import User
+
+        self.a.situacao, self.a.ativa = "em_analise", False
+        self.a.save()
+        self.assertEqual(self.client.get("/cliente/pedidos/custo/", {"salario": "2500"}).status_code, 404)
+        self.client.force_login(User.objects.create_user("escritorio", password="x", is_staff=True))
+        self.assertRedirects(self.client.get("/cliente/pedidos/custo/", {"salario": "2500"}), "/",
+                             fetch_redirect_response=False)

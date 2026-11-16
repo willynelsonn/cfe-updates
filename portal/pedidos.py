@@ -5,18 +5,21 @@ from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from empresas.acesso import eh_escritorio
+from folha.custo import custo_mensal, liquido_estimado
 from pessoal.models import Funcionario
 
 from .anexos import anexar
 from .models import Anexo, Mensagem, Pedido, concluir_os_aceitos
-from .pedido_forms import FORMULARIOS, MensagemForm, resumo
+from .pedido_forms import FORMULARIOS, MensagemForm, dinheiro, resumo
 
 DESCRICOES = {
     "contratei": "Alguém novo vai começar a trabalhar.",
@@ -101,7 +104,23 @@ def criar(request, tipo):
     return render(request, "portal/pedido_form.html", {
         "form": form, "titulo": dict(Pedido.TIPOS)[tipo],
         "direitos": _direitos_de_ferias(request.empresa) if tipo == "ferias" else None,
+        "custo_url": reverse("portal:pedido_custo") if tipo == "contratei" else None,
     })
+
+
+@da_dona
+def custo(request):
+    """Custo estimado de quem a dona quer contratar: pedaço de página que o formulário "Contratei" mostra."""
+    if "contratei" not in tipos_permitidos(request.empresa):
+        raise Http404
+    try:
+        salario = dinheiro("Salário").clean(request.GET.get("salario"))
+    except ValidationError:
+        return HttpResponse("")
+    if not salario:
+        return HttpResponse("")
+    c = custo_mensal(request.empresa, salario)
+    return render(request, "portal/_custo.html", {"custo": c, "liquido": liquido_estimado(salario, c.remuneracao)})
 
 
 @da_dona
@@ -146,7 +165,8 @@ def corrigir(request, pk):
         messages.success(request, "Pedido corrigido e reenviado ao escritório.")
         return redirect("portal:pedido", pk=p.pk)
     return render(request, "portal/pedido_form.html", {"form": form, "titulo": f"Corrigir: {p.get_tipo_display()}",
-                                                       "pedido": p})
+                                                       "pedido": p, "custo_url": reverse("portal:pedido_custo")
+                                                       if p.tipo == "contratei" else None})
 
 
 @da_dona
