@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Convite{% endblock %}
+{% block content %}
+<div class="topo"><h1>Convite para a dona da {{ empresa.razao_social }}</h1></div>
+<div class="card" style="max-width:640px">
+  <p style="margin-top:0">Mande este link para a dona. Ele vale por <strong>7 dias</strong> e funciona <strong>uma vez só</strong>.</p>
+  <div class="msg warning" role="status"><div>Este link não aparece de novo. Copie ou mande agora; se perder, gere outro convite.</div></div>
+  <div class="campo">
+    <label for="link-convite">Link do convite</label>
+    <input id="link-convite" type="text" readonly value="{{ link }}" onclick="this.select()">
+  </div>
+  <div class="rodape-form">
+    <a class="btn primario" href="{{ whatsapp }}" target="_blank" rel="noopener">Mandar pelo WhatsApp</a>
+    <a class="btn fantasma" href="{% url 'empresas:lista' %}">Voltar para a lista</a>
+  </div>
+</div>
+{% endblock %}

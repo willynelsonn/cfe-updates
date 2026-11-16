@@ -16,6 +16,7 @@
         {% if e.situacao == "em_analise" %}<a class="btn pequeno primario" href="{% url 'empresas:validar' e.pk %}">Conferir</a>{% endif %}
         <a class="btn pequeno" href="{% url 'empresas:editar' e.pk %}">Editar</a>
         <a class="btn pequeno" href="{% url 'empresas:certificado' e.pk %}">Certificado</a>
+        <form class="inline" method="post" action="{% url 'empresas:convidar' e.pk %}">{% csrf_token %}<button class="btn pequeno">Convidar a dona</button></form>
         {% if e.ativa %}<form class="inline" method="post" action="{% url 'empresas:selecionar' e.pk %}">{% csrf_token %}<button class="btn pequeno">Trabalhar nesta</button></form>{% endif %}
       </td>
     </tr>

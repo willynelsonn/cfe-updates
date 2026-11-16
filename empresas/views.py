@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -5,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView, UpdateView
@@ -14,7 +16,7 @@ from folha.models import criar_rubricas_padrao
 
 from .acesso import eh_escritorio
 from .forms import CertificadoForm, EmpresaForm, ValidarEmpresaForm
-from .models import Empresa
+from .models import Convite, Empresa
 
 
 class EmpresaListView(LoginRequiredMixin, ListView):
@@ -99,4 +101,18 @@ def validar(request, pk):
     return render(request, "empresas/validar.html", {
         "empresa": empresa, "form": form, "erro_motivo": erro_motivo,
         "acessos": empresa.acessos.select_related("usuario"),
+    })
+
+
+@login_required
+@user_passes_test(eh_escritorio)
+@require_POST
+def convidar(request, pk):
+    """Gera o link de uso único para a dona criar a conta. O link aparece só nesta resposta."""
+    empresa = get_object_or_404(Empresa, pk=pk)
+    _, codigo = Convite.criar(empresa, request.user)
+    link = request.build_absolute_uri(reverse("portal:convite", args=[codigo]))
+    texto = f"Olá! Este é o seu link para entrar no portal da {empresa.razao_social} (vale por 7 dias): {link}"
+    return render(request, "empresas/convite_link.html", {
+        "empresa": empresa, "link": link, "whatsapp": "https://wa.me/?text=" + quote(texto),
     })
