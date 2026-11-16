@@ -548,3 +548,8 @@ a.pedido-item:hover { border-color: var(--accent); }
 .portal-menu { display: flex; gap: 6px; margin: 0 0 6px; }
 .portal-menu a { padding: 6px 12px; border-radius: 99px; color: var(--text-2); font-weight: 600; font-size: 14px; }
 .portal-menu a[aria-current="page"] { background: var(--accent-soft); color: var(--accent-ink); }
+
+/* Ajuda "O que é?" dos campos com palavra técnica */
+.oque { margin-top: 6px; font-size: 13px; line-height: 1.5; }
+.oque summary { cursor: pointer; color: var(--accent); font-weight: 600; width: fit-content; padding: 4px 0; }
+.oque p { margin: 6px 0 0; }

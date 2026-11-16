@@ -1,4 +1,4 @@
-<div class="campo {% if campo.errors %}tem-erro{% endif %}">
+{% load ui %}<div class="campo {% if campo.errors %}tem-erro{% endif %}">
   {% if campo.field.widget.input_type == "checkbox" %}
     <label>{{ campo }} {{ campo.label|capfirst }}</label>
   {% else %}
@@ -6,5 +6,6 @@
     {{ campo }}
   {% endif %}
   {% if campo.help_text %}<div class="ajuda">{{ campo.help_text }}</div>{% endif %}
+  {% ajuda campo.name %}
   {% for e in campo.errors %}<div class="erro">{{ e }}</div>{% endfor %}
 </div>
