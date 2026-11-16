@@ -22,6 +22,10 @@ def empresa_ativa(request):
             Empresa.objects.filter(ativa=True) if eh_escritorio(request.user) else empresas_do_usuario(request.user)
         ).only("id", "razao_social", "nome_fantasia"),
         "pendencias_criticas": SimpleLazyObject(lambda: _criticos(request)),
+        "empresas_para_conferir": (
+            SimpleLazyObject(lambda: Empresa.objects.filter(situacao="em_analise").count())
+            if eh_escritorio(request.user) else 0
+        ),
     }
 
 

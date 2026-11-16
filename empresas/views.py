@@ -1,15 +1,19 @@
+from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.files.base import ContentFile
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView, UpdateView
 
 from folha.models import criar_rubricas_padrao
 
-from .forms import CertificadoForm, EmpresaForm
+from .acesso import eh_escritorio
+from .forms import CertificadoForm, EmpresaForm, ValidarEmpresaForm
 from .models import Empresa
 
 
@@ -64,3 +68,35 @@ def certificado(request, pk):
         messages.success(request, f"Certificado de {cert.titular} salvo (válido até {cert.validade:%d/%m/%Y}).")
         return redirect("empresas:lista")
     return render(request, "form.html", {"form": form, "titulo": f"Certificado digital - {empresa}", "multipart": True})
+
+
+@login_required
+@user_passes_test(eh_escritorio)
+def validar(request, pk):
+    """O escritório confere a empresa que a dona cadastrou: completa os dados técnicos e libera, ou recusa."""
+    empresa = get_object_or_404(Empresa, pk=pk)
+    acao = request.POST.get("acao") if request.method == "POST" else None
+    form = ValidarEmpresaForm(request.POST if acao == "liberar" else None, instance=empresa)
+    erro_motivo = ""
+    if acao == "recusar":
+        motivo = request.POST.get("motivo", "").strip()
+        if motivo:
+            Empresa.objects.filter(pk=pk).update(situacao="recusada", ativa=False, motivo_recusa=motivo,
+                                                 validada_em=timezone.now(), validada_por=request.user)
+            messages.success(request, f"{empresa.razao_social} recusada. A dona vê o motivo ao entrar.")
+            return redirect("empresas:lista")
+        erro_motivo = "Escreva o motivo: a dona vai ler."
+    elif acao == "liberar" and form.is_valid():
+        with transaction.atomic():
+            e = form.save(commit=False)
+            e.situacao, e.ativa, e.envio_automatico, e.motivo_recusa = "ativa", True, False, ""
+            e.transmissor_cnpj = e.transmissor_cnpj or settings.FOLHA_ESCRITORIO_CNPJ
+            e.validada_em, e.validada_por = timezone.now(), request.user
+            e.save()
+            criar_rubricas_padrao(e)
+        messages.success(request, f"{e.razao_social} liberada. Envie o certificado para ligar o envio ao eSocial.")
+        return redirect("empresas:lista")
+    return render(request, "empresas/validar.html", {
+        "empresa": empresa, "form": form, "erro_motivo": erro_motivo,
+        "acessos": empresa.acessos.select_related("usuario"),
+    })

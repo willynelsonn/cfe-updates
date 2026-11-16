@@ -16,6 +16,13 @@ class EmpresaForm(forms.ModelForm):
         ]
 
 
+
+class ValidarEmpresaForm(EmpresaForm):
+    """Conferência da empresa cadastrada pela dona: o envio automático fica desligado até haver certificado."""
+
+    class Meta(EmpresaForm.Meta):
+        fields = [f for f in EmpresaForm.Meta.fields if f != "envio_automatico"]
+
 class CertificadoForm(forms.Form):
     arquivo = forms.FileField(label="Arquivo do certificado A1 (.pfx ou .p12)")
     senha = forms.CharField(label="Senha do certificado", widget=forms.PasswordInput)

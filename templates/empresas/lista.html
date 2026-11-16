@@ -7,15 +7,16 @@
   <tbody>
   {% for e in object_list %}
     <tr>
-      <td><strong>{{ e.razao_social }}</strong>{% if e.nome_fantasia %}<br><span class="muted">{{ e.nome_fantasia }}</span>{% endif %}</td>
+      <td><strong>{{ e.razao_social }}</strong>{% if e.situacao == "em_analise" %} <span class="tag pendente">Em análise</span>{% elif e.situacao == "recusada" %} <span class="tag rejeitado">Recusada</span>{% endif %}{% if e.nome_fantasia %}<br><span class="muted">{{ e.nome_fantasia }}</span>{% endif %}</td>
       <td>{{ e.nr_insc_formatado }}</td>
       <td>{{ e.class_trib }}</td>
       <td>{{ e.get_ambiente_esocial_display }}</td>
       <td>{% if e.tem_certificado %}<span class="tag aceito">ok</span>{% else %}<span class="tag pendente">falta</span>{% endif %}</td>
       <td class="acoes">
+        {% if e.situacao == "em_analise" %}<a class="btn pequeno primario" href="{% url 'empresas:validar' e.pk %}">Conferir</a>{% endif %}
         <a class="btn pequeno" href="{% url 'empresas:editar' e.pk %}">Editar</a>
         <a class="btn pequeno" href="{% url 'empresas:certificado' e.pk %}">Certificado</a>
-        <form class="inline" method="post" action="{% url 'empresas:selecionar' e.pk %}">{% csrf_token %}<button class="btn pequeno">Trabalhar nesta</button></form>
+        {% if e.ativa %}<form class="inline" method="post" action="{% url 'empresas:selecionar' e.pk %}">{% csrf_token %}<button class="btn pequeno">Trabalhar nesta</button></form>{% endif %}
       </td>
     </tr>
   {% empty %}<tr><td colspan="6" class="muted">Nenhuma empresa cadastrada.</td></tr>{% endfor %}
