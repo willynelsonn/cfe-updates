@@ -87,6 +87,21 @@ class ComandosServidorTests(TestCase):
         self.assertTrue(User.objects.get(username="carla").check_password("NovaSenhaForte2026"))
         self.assertIn("_auth_user_id", self.client.session)
 
+    def test_tema_escolhido_fica_na_conta_depois_de_sair(self):
+        User.objects.create_user("dani", password="senha-da-dani-123")
+        self.client.login(username="dani", password="senha-da-dani-123")
+        self.assertEqual(self.client.post("/conta/preferencias/", {"cor": "verde", "tema": "dark"}).status_code, 204)
+        self.client.post("/conta/preferencias/", {"cor": "invalida", "tema": "x"})  # valores fora da lista são ignorados
+        self.client.logout()
+        self.client.login(username="dani", password="senha-da-dani-123")
+        html = self.client.get("/").content.decode()
+        self.assertIn('data-cor="verde"', html)
+        self.assertIn('data-theme="dark"', html)
+        self.client.post("/conta/preferencias/", {"cor": "verde", "tema": ""})  # automático
+        self.assertNotIn("data-theme=", self.client.get("/").content.decode())
+        self.client.logout()
+        self.assertEqual(self.client.post("/conta/preferencias/", {"cor": "azul"}).status_code, 302)
+
     def test_preparar_servidor_cria_env_uma_vez_so(self):
         with tempfile.TemporaryDirectory() as tmp, override_settings(BASE_DIR=Path(tmp)):
             call_command("preparar_servidor", stdout=StringIO())

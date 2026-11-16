@@ -189,3 +189,14 @@ class Empresa(models.Model):
     @property
     def cod_lotacao_padrao(self):
         return "LOT01"
+
+
+class Preferencia(models.Model):
+    """Cor e aparência escolhidas pela pessoa; valem em qualquer navegador, mesmo depois de sair."""
+
+    usuario = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="preferencia")
+    cor = models.CharField(max_length=20, blank=True)
+    tema = models.CharField(max_length=10, blank=True, help_text="light, dark ou vazio (automático)")
+
+    def __str__(self):
+        return f"Preferências de {self.usuario}"

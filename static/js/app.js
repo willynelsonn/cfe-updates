@@ -54,6 +54,15 @@
     });
   }
 
+  // Guarda cor e aparência na conta da pessoa, para valerem depois de sair e em outro computador.
+  function guardarNaConta() {
+    var r = document.documentElement, url = r.dataset.urlPref;
+    if (!url) return;
+    var token = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || "";
+    var dados = new URLSearchParams({ cor: r.dataset.cor || "", tema: r.dataset.theme || "" });
+    fetch(url, { method: "POST", body: dados, headers: { "X-CSRFToken": token }, credentials: "same-origin" });
+  }
+
   // Tema claro/escuro (respeita o sistema até o usuário escolher)
   document.querySelectorAll("[data-tema]").forEach(function (b) {
     b.addEventListener("click", function (ev) {
@@ -63,6 +72,7 @@
         : window.matchMedia("(prefers-color-scheme: dark)").matches;
       raiz.dataset.theme = escuroAgora ? "light" : "dark";
       try { localStorage.setItem("tema", raiz.dataset.theme); } catch (e) {}
+      guardarNaConta();
       document.dispatchEvent(new Event("tema-alterado"));
     });
   });
@@ -78,7 +88,10 @@
       b.setAttribute("aria-pressed", String(b.dataset.aparencia === tema));
     });
   }
-  function salvar(chave, valor) { try { valor ? localStorage.setItem(chave, valor) : localStorage.removeItem(chave); } catch (e) {} }
+  function salvar(chave, valor) {
+    try { valor ? localStorage.setItem(chave, valor) : localStorage.removeItem(chave); } catch (e) {}
+    guardarNaConta();
+  }
   document.querySelectorAll("button[data-cor]").forEach(function (b) {
     b.addEventListener("click", function (ev) {
       ev.stopPropagation();

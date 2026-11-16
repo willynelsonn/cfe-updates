@@ -1,13 +1,19 @@
 {% load static ui %}<!doctype html>
-<html lang="pt-br" data-cor="{{ cor_padrao|default:'laranja' }}">
+<html lang="pt-br" data-cor="{{ preferencia.cor|default:cor_padrao|default:'laranja' }}"{% if preferencia.tema %} data-theme="{{ preferencia.tema }}"{% endif %}{% if preferencia %} data-pref data-url-pref="{% url 'salvar_preferencias' %}"{% elif user.is_authenticated %} data-url-pref="{% url 'salvar_preferencias' %}"{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}FolhaWeb{% endblock %} · FolhaWeb</title>
   <script>
     try {
-      var t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.theme = t;
-      var c = localStorage.getItem("cor"); if (c) document.documentElement.dataset.cor = c;
+      var r = document.documentElement;
+      if ("pref" in r.dataset) {  // escolha salva na conta: vale e fica neste navegador para a tela de entrar
+        r.dataset.theme ? localStorage.setItem("tema", r.dataset.theme) : localStorage.removeItem("tema");
+        localStorage.setItem("cor", r.dataset.cor);
+      } else {
+        var t = localStorage.getItem("tema"); if (t) r.dataset.theme = t;
+        var c = localStorage.getItem("cor"); if (c) r.dataset.cor = c;
+      }
     } catch (e) {}
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js-anima");
   </script>
