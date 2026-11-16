@@ -233,3 +233,16 @@ FOLHA_COR_PADRAO = os.environ.get("FOLHA_COR_PADRAO", "grafite")
 FOLHA_ESCRITORIO_CNPJ = os.environ.get("FOLHA_ESCRITORIO_CNPJ", "")
 FOLHA_ESCRITORIO_NOME = os.environ.get("FOLHA_ESCRITORIO_NOME", "seu escritório")
 CADASTRO_MAX_POR_HORA = int(os.environ.get("FOLHA_CADASTRO_MAX_POR_HORA", "5"))  # por IP
+
+# Avisos por e-mail. Sem FOLHA_EMAIL_HOST nada é enviado (nem escrito no log).
+EMAIL_HOST = os.environ.get("FOLHA_EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("FOLHA_EMAIL_PORTA", "587"))
+EMAIL_HOST_USER = os.environ.get("FOLHA_EMAIL_USUARIO", "")
+EMAIL_HOST_PASSWORD = os.environ.get("FOLHA_EMAIL_SENHA", "")
+EMAIL_USE_TLS, EMAIL_USE_SSL = EMAIL_PORT == 587, EMAIL_PORT == 465
+EMAIL_TIMEOUT = 10
+EMAIL_BACKEND = ("django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST
+                 else "django.core.mail.backends.dummy.EmailBackend")
+DEFAULT_FROM_EMAIL = os.environ.get("FOLHA_EMAIL_REMETENTE") or EMAIL_HOST_USER or "nao-responda@localhost"
+FOLHA_ESCRITORIO_EMAIL = [e.strip() for e in os.environ.get("FOLHA_ESCRITORIO_EMAIL", "").split(",") if e.strip()]
+FOLHA_SITE_URL = os.environ.get("FOLHA_SITE_URL") or os.environ.get("RENDER_EXTERNAL_URL", "http://localhost:8000")
