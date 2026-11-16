@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Pedidos das clientes{% endblock %}
+{% block content %}
+<div class="topo"><h1>Pedidos das clientes</h1>
+  {% if ver == "todos" %}<a class="btn" href="{% url 'portal:escritorio_pedidos' %}">Só os em andamento</a>{% else %}<a class="btn" href="?ver=todos">Ver todos</a>{% endif %}
+</div>
+<div class="explica">O que a dona pede fica guardado no pedido. Nada vai ao cadastro nem ao eSocial antes de você aprovar.</div>
+
+{% if novas_empresas %}
+<section class="card" aria-labelledby="t-novas">
+  <h2 id="t-novas" style="margin-top:0">Empresas novas para conferir</h2>
+  <ul style="margin:0;padding-left:18px;line-height:1.8">{% for e in novas_empresas %}<li><a href="{% url 'empresas:validar' e.pk %}">{{ e.razao_social }}</a> <span class="muted">{{ e.nr_insc_formatado }}</span></li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+<div class="tabela"><table>
+  <thead><tr><th>Pedido</th><th>Empresa</th><th>Pessoa</th><th>Situação</th><th>Feito em</th><th></th></tr></thead>
+  <tbody>
+  {% for p in pedidos %}
+    <tr>
+      <td><strong>{{ p.get_tipo_display }}</strong> <span class="muted">nº {{ p.pk }}</span></td>
+      <td>{{ p.empresa.razao_social }}</td>
+      <td>{{ p.funcionario.nome|default:p.respostas.nome|default:"—" }}</td>
+      <td><span class="tag {{ p.situacao }}">{{ p.get_situacao_display }}</span></td>
+      <td>{{ p.criado_em|date:"d/m/Y H:i" }}</td>
+      <td class="acoes"><a class="btn pequeno{% if p.situacao == 'enviado' %} primario{% endif %}" href="{% url 'portal:escritorio_pedido' p.pk %}">Abrir</a></td>
+    </tr>
+  {% empty %}<tr><td colspan="6" class="muted">Nenhum pedido{% if ver != "todos" %} em andamento{% endif %}.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

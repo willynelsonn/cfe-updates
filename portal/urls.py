@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import pedidos, views
+from . import escritorio, pedidos, views
 
 app_name = "portal"
 
@@ -13,6 +13,10 @@ urlpatterns = [
     path("cliente/pedidos/<int:pk>/corrigir/", pedidos.corrigir, name="pedido_corrigir"),
     path("cliente/pedidos/<int:pk>/cancelar/", pedidos.cancelar, name="pedido_cancelar"),
     path("cliente/pedidos/<int:pk>/anexos/<int:anexo>/", pedidos.anexo, name="pedido_anexo"),
+    path("pedidos/", escritorio.lista, name="escritorio_pedidos"),
+    path("pedidos/<int:pk>/", escritorio.pedido, name="escritorio_pedido"),
+    path("pedidos/<int:pk>/aprovar/", escritorio.aprovar, name="escritorio_aprovar"),
+    path("pedidos/<int:pk>/anexos/<int:anexo>/", escritorio.anexo, name="escritorio_anexo"),
     path("cadastro/", views.cadastro, name="cadastro"),
     path("termos/", views.termos, name="termos"),
     path("privacidade/", views.privacidade, name="privacidade"),
