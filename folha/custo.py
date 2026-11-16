@@ -131,6 +131,15 @@ def custo_mensal(empresa, salario: Decimal, *, periculosidade=False, insalubrida
     return custo
 
 
+def liquido_estimado(salario: Decimal, remuneracao: Decimal, *, dependentes=0, vale_transporte=ZERO,
+                     ano: int | None = None) -> dict:
+    """Quanto a pessoa recebe num mês cheio: remuneração menos INSS, IRRF e o desconto do VT (até 6% do salário)."""
+    tab = tabelas_do_ano(ano or timezone.localdate().year)
+    inss = c.calcular_inss(remuneracao, tab).valor
+    irrf = c.calcular_irrf(remuneracao, inss, dependentes, tab).valor
+    vt = c.r2(min(Decimal(vale_transporte), Decimal(salario) * Decimal("0.06")))
+    return {"inss": inss, "irrf": irrf, "vt": vt, "liquido": c.r2(remuneracao - inss - irrf - vt)}
+
 def custo_funcionario(funcionario, ano: int | None = None) -> Custo:
     return custo_mensal(
         funcionario.empresa, funcionario.salario, periculosidade=funcionario.periculosidade,

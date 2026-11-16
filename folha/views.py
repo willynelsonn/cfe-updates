@@ -23,7 +23,7 @@ from pessoal.models import Funcionario
 
 from . import calculo as c
 from .conformidade import problemas_ferias, proximo_periodo_aquisitivo
-from .custo import aliquota_encargos, custo_mensal, custos_da_empresa
+from .custo import aliquota_encargos, custo_mensal, custos_da_empresa, liquido_estimado
 from .forms import CompetenciaForm, FechamentoForm, FeriasForm, LancamentoForm, RescisaoForm, RubricaForm
 from .guias import atualizar_guias, emitir_darf
 from .models import Competencia, Ferias, Guia, Holerite, Lancamento, Rescisao, Rubrica, criar_rubricas_padrao
@@ -547,24 +547,45 @@ def custos(request):
         return redirect("empresas:nova")
     lista = custos_da_empresa(request.empresa)
     total = sum((cu.total for _, cu in lista), Decimal("0"))
-    simulacao = None
-    salario_sim = request.GET.get("salario", "").replace(".", "").replace(",", ".")
-    if salario_sim:
-        try:
-            valor = Decimal(salario_sim)
-            if valor > 0:
-                simulacao = custo_mensal(
-                    request.empresa, valor, vale_transporte=Decimal(request.GET.get("vt") or 0),
-                    beneficios=Decimal(request.GET.get("beneficios") or 0),
-                    periculosidade=bool(request.GET.get("periculosidade")),
-                )
-        except InvalidOperation:
-            messages.error(request, "Informe o salário em reais, ex.: 2500,00.")
     aliq, partes = aliquota_encargos(request.empresa)
     return render(request, "folha/custos.html", {
-        "lista": lista, "total": total, "anual": total * 12, "simulacao": simulacao,
+        "lista": lista, "total": total, "anual": total * 12,
         "aliq_encargos": aliq, "partes_encargos": partes,
         "media": (total / len(lista)) if lista else Decimal("0"),
+    })
+
+
+def _reais(texto: str) -> Decimal:
+    """'2.500,00' ou '2500' -> Decimal; vazio -> 0. Levanta InvalidOperation se não for número."""
+    texto = (texto or "").strip().replace("R$", "").replace(" ", "")
+    return Decimal(texto.replace(".", "").replace(",", ".")) if texto else Decimal("0")
+
+
+@login_required
+def simulador(request):
+    """Quanto custa contratar: a mesma conta de custos, para um salário que ainda não está na folha."""
+    if request.empresa is None:
+        return redirect("empresas:nova")
+    g = request.GET
+    simulacao = liquido = None
+    if g.get("salario"):
+        try:
+            salario, vt = _reais(g["salario"]), _reais(g.get("vt"))
+            insalubridade = int(g.get("insalubridade") or 0)
+            dependentes = int(g.get("dependentes") or 0)
+            if salario <= 0 or vt < 0 or insalubridade not in (0, 10, 20, 40) or not 0 <= dependentes <= 20:
+                raise ValueError
+            simulacao = custo_mensal(
+                request.empresa, salario, vale_transporte=vt, beneficios=max(_reais(g.get("beneficios")), Decimal("0")),
+                periculosidade=bool(g.get("periculosidade")), insalubridade=insalubridade,
+                aprendiz=bool(g.get("aprendiz")),
+            )
+            liquido = liquido_estimado(salario, simulacao.remuneracao, dependentes=dependentes, vale_transporte=vt)
+        except (InvalidOperation, ValueError):
+            messages.error(request, "Confira os valores: informe o salário em reais, ex.: 2500,00.")
+    aliq, partes = aliquota_encargos(request.empresa)
+    return render(request, "folha/simulador.html", {
+        "simulacao": simulacao, "liquido": liquido, "aliq_encargos": aliq, "partes_encargos": partes,
     })
 
 

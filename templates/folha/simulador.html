@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Simulador de contratação{% endblock %}
+{% block content %}
+<div class="topo">
+  <div><h1>Quanto custa contratar?</h1><div class="subtitulo">Simule um salário antes de admitir: custo por mês e por ano com a tributação desta empresa, e quanto a pessoa recebe.</div></div>
+  <a class="btn" href="{% url 'folha:custos' %}">{% icone "custo" "sm" %} Custos da equipe</a>
+</div>
+
+{% if simulacao %}
+<section class="kpis">
+  <div class="kpi"><div class="rotulo">Custo por mês</div><div class="valor">{{ simulacao.total|moeda }}</div><div class="rodape">{{ simulacao.multiplicador|numero }}× o salário</div></div>
+  <div class="kpi"><div class="rotulo">Custo por ano</div><div class="valor">{{ simulacao.anual|compacto }}</div><div class="rodape">12 meses, com 13º e férias provisionados</div></div>
+  <div class="kpi"><div class="rotulo">A pessoa recebe</div><div class="valor">{{ liquido.liquido|moeda }}</div><div class="rodape">líquido estimado por mês</div></div>
+  <div class="kpi"><div class="rotulo">Encargos patronais</div><div class="valor">{{ aliq_encargos|pct:2 }}</div><div class="rodape">{% if aliq_encargos %}sobre a remuneração{% else %}no DAS (Simples Nacional){% endif %}</div></div>
+</section>
+{% endif %}
+
+<div class="cols-2" style="grid-template-columns:minmax(0,1fr) minmax(0,1.5fr)">
+  <section class="card">
+    <div class="card-cab"><div><h2>{% icone "calculadora" %} Dados da vaga</h2><span class="dica">Só o salário é obrigatório</span></div></div>
+    <form method="get">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="campo" style="grid-column:1/-1"><label for="sal">Salário (R$)</label><input id="sal" name="salario" inputmode="decimal" placeholder="2.500,00" value="{{ request.GET.salario }}" required></div>
+        <div class="campo"><label for="vt">Vale-transporte (R$/mês)</label><input id="vt" name="vt" inputmode="decimal" placeholder="0" value="{{ request.GET.vt }}"></div>
+        <div class="campo"><label for="ben">Outros benefícios (R$/mês)</label><input id="ben" name="beneficios" inputmode="decimal" placeholder="0" value="{{ request.GET.beneficios }}"></div>
+        <div class="campo"><label for="ins">Insalubridade</label><select id="ins" name="insalubridade">
+          <option value="0">Não</option>
+          <option value="10" {% if request.GET.insalubridade == "10" %}selected{% endif %}>Grau mínimo (10%)</option>
+          <option value="20" {% if request.GET.insalubridade == "20" %}selected{% endif %}>Grau médio (20%)</option>
+          <option value="40" {% if request.GET.insalubridade == "40" %}selected{% endif %}>Grau máximo (40%)</option></select></div>
+        <div class="campo"><label for="dep">Dependentes (para o IR)</label><input id="dep" name="dependentes" type="number" min="0" max="20" placeholder="0" value="{{ request.GET.dependentes }}"></div>
+        <div class="campo"><label><input type="checkbox" name="periculosidade" {% if request.GET.periculosidade %}checked{% endif %}> Periculosidade (30%)</label></div>
+        <div class="campo"><label><input type="checkbox" name="aprendiz" {% if request.GET.aprendiz %}checked{% endif %}> Aprendiz (FGTS de 2%)</label></div>
+      </div>
+      <p style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn primario grande">Calcular custo</button>{% if simulacao %}<a class="btn fantasma grande" href="{% url 'folha:simulador' %}">Limpar</a>{% endif %}</p>
+    </form>
+  </section>
+
+  <div>
+  {% if simulacao %}
+    <section class="card">
+      <div class="card-cab"><div><h2>Para onde vai o custo</h2><span class="dica">{{ simulacao.total|moeda }} por mês para a empresa</span></div></div>
+      {% with custo=simulacao %}{% include "folha/_custo_detalhe.html" %}{% endwith %}
+    </section>
+    <section class="card">
+      <div class="card-cab"><div><h2>Quanto a pessoa recebe</h2><span class="dica">Mês cheio, sem faltas nem horas extras</span></div></div>
+      <ul class="lista-valores">
+        <li><span></span><span>Remuneração bruta</span><span></span><span class="num">{{ simulacao.remuneracao|moeda }}</span></li>
+        <li><span></span><span>INSS</span><span></span><span class="num">− {{ liquido.inss|moeda }}</span></li>
+        <li><span></span><span>Imposto de renda</span><span></span><span class="num">− {{ liquido.irrf|moeda }}</span></li>
+        {% if liquido.vt %}<li><span></span><span>Vale-transporte (até 6% do salário)</span><span></span><span class="num">− {{ liquido.vt|moeda }}</span></li>{% endif %}
+        <li><span></span><span><b>Líquido estimado</b></span><span></span><span class="num"><b>{{ liquido.liquido|moeda }}</b></span></li>
+      </ul>
+    </section>
+  {% else %}
+    <section class="card"><div class="vazio">Informe o salário e clique em <b>Calcular custo</b>.<br>A conta usa a tributação cadastrada nesta empresa e as tabelas do ano.</div></section>
+  {% endif %}
+  </div>
+</div>
+
+{% if partes_encargos %}
+<div class="card"><h2>Como os encargos desta empresa são compostos</h2>
+  <ul class="lista-valores">{% for nome, p in partes_encargos %}<li><span></span><span>{{ nome }}</span><span></span><span class="num">{{ p|pct:2 }}</span></li>{% endfor %}</ul>
+  <p class="dica">Mais FGTS de 8% e provisões. Ajuste RAT, FAP e terceiros no cadastro da empresa.</p></div>
+{% endif %}
+{% endblock %}
