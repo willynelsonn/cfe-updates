@@ -1,0 +1,20 @@
+{% extends "portal/base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block conteudo %}
+<p style="margin:8px 0 0"><a href="{% if pedido %}{% url 'portal:pedido' pedido.pk %}{% else %}{% url 'portal:pedido_novo' %}{% endif %}">← Voltar</a></p>
+<h1>{{ titulo }}</h1>
+<p class="muted" style="margin:0 0 14px">Nada muda na folha antes de o escritório conferir.</p>
+{% if direitos %}
+<section class="card" aria-labelledby="t-direitos">
+  <h2 id="t-direitos" style="margin:0 0 8px;font-size:16px">Férias de cada pessoa</h2>
+  <ul style="margin:0;padding-left:18px;line-height:1.6">{% for nome, texto in direitos %}<li><strong>{{ nome }}</strong>: {{ texto }}</li>{% endfor %}</ul>
+  <p class="muted" style="margin:8px 0 0;font-size:13px">Avise a pessoa 30 dias antes. O pagamento das férias sai até 2 dias antes do primeiro dia.</p>
+</section>
+{% endif %}
+<form method="post" enctype="multipart/form-data" class="card" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="msg error" role="alert"><div>{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div></div>{% endif %}
+  <div class="form-grid">{% for campo in form %}{% include "_campo.html" %}{% endfor %}</div>
+  <button class="btn primario grande" type="submit" style="width:100%;margin-top:20px" data-ocupado="Enviando">Enviar ao escritório</button>
+</form>
+{% endblock %}

@@ -1,0 +1,6 @@
+<section class="card" aria-labelledby="t-pedido" style="border-color:var(--accent)">
+  <h2 id="t-pedido" style="margin-top:0">Pedido nº {{ pedido.pk }} da cliente: {{ pedido.get_tipo_display }}</h2>
+  <p class="muted" style="margin:0 0 8px">Já preenchemos o que deu com as respostas da dona. Confira, complete a parte técnica e salve: ao salvar, o pedido fica aprovado.</p>
+  <dl class="respostas">{% for rotulo, valor in resumo_pedido %}<dt>{{ rotulo }}</dt><dd>{{ valor|linebreaksbr }}</dd>{% endfor %}</dl>
+  <p style="margin:10px 0 0"><a href="{% url 'portal:escritorio_pedido' pedido.pk %}">Ver o pedido, a conversa e os arquivos</a></p>
+</section>

@@ -23,6 +23,9 @@
     .portal .card { margin-bottom: 14px; }
     .portal .passos { margin: 0; padding-left: 22px; display: grid; gap: 10px; line-height: 1.5; }
     .portal .destaque-cnpj { font-weight: 800; white-space: nowrap; }
+    /* Opções de escolha (rádio) com área de toque boa no celular */
+    .portal .campo div > div > label { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-weight: 500; }
+    .portal .campo input[type="radio"] { width: 20px; height: 20px; flex: none; accent-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -34,6 +37,12 @@
     <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn pequeno" type="submit">{% icone "sair" "sm" %} Sair</button></form>
     {% endif %}
   </header>
+  {% if user.is_authenticated and not user.is_staff and empresa_ativa %}
+  <nav class="portal-menu" aria-label="Menu">
+    <a href="{% url 'portal:inicio' %}"{% if request.resolver_match.url_name == "inicio" %} aria-current="page"{% endif %}>Início</a>
+    <a href="{% url 'portal:pedidos' %}"{% if request.resolver_match.url_name != "inicio" %} aria-current="page"{% endif %}>Pedidos</a>
+  </nav>
+  {% endif %}
   {% for m in messages %}<div class="msg {{ m.tags }}" role="status">{% if m.tags == 'error' %}{% icone "alerta" %}{% elif m.tags == 'success' %}{% icone "ok" %}{% else %}{% icone "info" %}{% endif %}<div>{{ m }}</div></div>{% endfor %}
   <main>{% block conteudo %}{% endblock %}</main>
 </div>

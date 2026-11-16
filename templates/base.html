@@ -34,6 +34,7 @@
       <nav class="pilulas" aria-label="Menu principal" data-pilulas>
         <span class="indicador" aria-hidden="true"></span>
         <a href="{% url 'dashboard' %}" class="{% if nome == 'dashboard' %}ativo{% endif %}">{% icone "inicio" "sm" %}<span>Painel</span>{% if pendencias_criticas %}<span class="badge" title="Pendências legais urgentes">{{ pendencias_criticas }}</span>{% endif %}</a>
+        <a href="{% url 'portal:escritorio_pedidos' %}" class="{% if ns == 'portal' %}ativo{% endif %}">{% icone "recibo" "sm" %}<span>Pedidos</span>{% if pedidos_para_ver %}<span class="badge" title="Pedidos novos das clientes">{{ pedidos_para_ver }}</span>{% endif %}</a>
         <a href="{% url 'folha:competencias' %}" class="{% if ns == 'folha' and nome in 'competencias competencia competencia_nova competencia_editar guias holerite holerites_impressao' %}ativo{% endif %}">{% icone "folha" "sm" %}<span>Folha</span></a>
         <a href="{% url 'pessoal:lista' %}" class="{% if ns == 'pessoal' and nome != 'cargos' and nome != 'cargo_editar' %}ativo{% endif %}">{% icone "pessoas" "sm" %}<span>Pessoas</span></a>
         <a href="{% url 'folha:ferias' %}" class="{% if nome|slice:':6' == 'ferias' %}ativo{% endif %}">{% icone "ferias" "sm" %}<span>Férias</span></a>
@@ -101,6 +102,7 @@
 
   <nav class="folha-movel" id="folha-movel" aria-label="Menu">
     <a href="{% url 'dashboard' %}" class="{% if nome == 'dashboard' %}ativo{% endif %}">{% icone "inicio" %} Painel</a>
+    <a href="{% url 'portal:escritorio_pedidos' %}">{% icone "recibo" %} Pedidos das clientes{% if pedidos_para_ver %} ({{ pedidos_para_ver }}){% endif %}</a>
     <div class="sec">Rotina</div>
     <a href="{% url 'folha:competencias' %}">{% icone "folha" %} Folha do mês</a>
     <a href="{% url 'folha:ferias' %}">{% icone "ferias" %} Férias</a>

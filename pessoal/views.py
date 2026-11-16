@@ -14,6 +14,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from empresas.mixins import EmpresaRequiredMixin
 from esocial.servico import ErroESocial, gerar_admissao, gerar_desligamento, tentar_processar
+from portal.aprovacao import PedidoMixin
 
 from . import planilha
 from .forms import CargoForm, DependenteForm, DesligamentoForm, FuncionarioForm
@@ -77,8 +78,9 @@ class FuncionarioFormMixin:
         return reverse("pessoal:detalhe", args=[self.object.pk])
 
 
-class FuncionarioCreateView(EmpresaRequiredMixin, FuncionarioFormMixin, CreateView):
+class FuncionarioCreateView(EmpresaRequiredMixin, PedidoMixin, FuncionarioFormMixin, CreateView):
     extra_context = {"titulo": "Novo funcionário"}
+    tipo_pedido = "contratei"
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated and request.empresa and not request.empresa.cargos.exists():
@@ -89,6 +91,7 @@ class FuncionarioCreateView(EmpresaRequiredMixin, FuncionarioFormMixin, CreateVi
     def form_valid(self, form):
         form.instance.empresa = self.empresa
         resp = super().form_valid(form)
+        self.aprovar_pedido()
         func = self.object
         if self.empresa.envio_automatico and not func.esocial_ja_cadastrado:
             try:
@@ -104,8 +107,14 @@ class FuncionarioCreateView(EmpresaRequiredMixin, FuncionarioFormMixin, CreateVi
         return resp
 
 
-class FuncionarioUpdateView(EmpresaRequiredMixin, FuncionarioFormMixin, UpdateView):
+class FuncionarioUpdateView(EmpresaRequiredMixin, PedidoMixin, FuncionarioFormMixin, UpdateView):
     extra_context = {"titulo": "Editar funcionário"}
+    tipo_pedido = "alterar"
+
+    def form_valid(self, form):
+        resp = super().form_valid(form)
+        self.aprovar_pedido()
+        return resp
 
 
 class FuncionarioDetailView(EmpresaRequiredMixin, DetailView):

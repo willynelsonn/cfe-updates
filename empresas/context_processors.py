@@ -26,7 +26,14 @@ def empresa_ativa(request):
         "empresas_para_conferir": (
             Empresa.objects.filter(situacao="em_analise").count() if eh_escritorio(request.user) else 0
         ),
+        "pedidos_para_ver": _pedidos_para_ver(request.user),
     }
+
+
+def _pedidos_para_ver(user) -> int:
+    from portal.models import Pedido
+
+    return Pedido.objects.filter(situacao="enviado").count() if eh_escritorio(user) else 0
 
 
 CORES = {"laranja", "azul", "verde", "roxo", "rosa", "grafite"}

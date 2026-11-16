@@ -1,0 +1,13 @@
+{% extends "portal/base.html" %}{% load ui %}
+{% block title %}Novo pedido{% endblock %}
+{% block conteudo %}
+<p style="margin:8px 0 0"><a href="{% url 'portal:pedidos' %}">← Pedidos</a></p>
+<h1>O que você <em>precisa?</em></h1>
+<p class="muted" style="margin:0 0 14px">Escolha uma opção. O escritório confere antes de qualquer coisa ir ao governo.</p>
+{% for tipo, rotulo, descricao in tipos %}
+  <a class="card pedido-item" href="{% url 'portal:pedido_criar' tipo %}">
+    <span><strong>{{ rotulo }}</strong><br><span class="muted">{{ descricao }}</span></span>
+    <span aria-hidden="true">{% icone "seta" %}</span>
+  </a>
+{% endfor %}
+{% endblock %}

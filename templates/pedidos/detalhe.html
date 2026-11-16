@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Pedido nº {{ pedido.pk }}{% endblock %}
+{% block content %}
+<p style="margin:0 0 6px"><a href="{% url 'portal:escritorio_pedidos' %}">← Pedidos das clientes</a></p>
+<div class="topo"><h1>{{ pedido.get_tipo_display }} <span class="muted" style="font-size:.6em">nº {{ pedido.pk }}</span></h1><span class="tag {{ pedido.situacao }}">{{ pedido.get_situacao_display }}</span></div>
+<p class="muted" style="margin:0 0 14px">{{ pedido.empresa.razao_social }}{% if pedido.funcionario %} · {{ pedido.funcionario.nome }}{% endif %} · feito por {{ pedido.criado_por.get_full_name|default:pedido.criado_por.username|default:"—" }} em {{ pedido.criado_em|date:"d/m/Y H:i" }}</p>
+
+<section class="card" aria-labelledby="t-respostas">
+  <h2 id="t-respostas" style="margin-top:0">O que a dona respondeu</h2>
+  <dl class="respostas">{% for rotulo, valor in resumo %}<dt>{{ rotulo }}</dt><dd>{{ valor|linebreaksbr }}</dd>{% empty %}<dd class="muted">Só o arquivo.</dd>{% endfor %}</dl>
+  {% if pedido.aberto %}
+  <form method="post" action="{% url 'portal:escritorio_aprovar' pedido.pk %}" style="margin-top:16px">
+    {% csrf_token %}<button class="btn primario" type="submit">{{ botao_aprovar }}</button>
+  </form>
+  {% elif pedido.situacao == "aprovado" %}
+  <p class="muted" style="margin:16px 0 0">Aprovado. Fica concluído quando o eSocial aceitar o evento.</p>
+  {% endif %}
+</section>
+
+{% include "portal/_conversa.html" %}
+
+{% if pedido.situacao != "concluido" and pedido.situacao != "cancelado" %}
+<form method="post" enctype="multipart/form-data" class="card" novalidate>
+  {% csrf_token %}
+  <h2 style="margin-top:0">Responder à dona</h2>
+  {% if form.non_field_errors %}<div class="msg error" role="alert"><div>{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div></div>{% endif %}
+  <div class="form-grid">{% for campo in form %}{% include "_campo.html" %}{% endfor %}</div>
+  <div class="acoes" style="margin-top:14px">
+    <button class="btn primario" type="submit" name="acao" value="responder">Enviar mensagem</button>
+    {% if pedido.aberto %}
+    <button class="btn" type="submit" name="acao" value="devolver">Devolver para corrigir</button>
+    <button class="btn perigo" type="submit" name="acao" value="cancelar">Cancelar pedido</button>
+    {% endif %}
+  </div>
+  <p class="muted" style="margin:8px 0 0;font-size:13px">Para devolver ou cancelar, escreva o motivo: a dona vai ler.</p>
+</form>
+{% endif %}
+{% endblock %}

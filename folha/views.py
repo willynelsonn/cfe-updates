@@ -20,6 +20,7 @@ from esocial.servico import (
     tentar_processar,
 )
 from pessoal.models import Funcionario
+from portal.aprovacao import aprovar, contexto, iniciais, pedido_em_aberto
 
 from . import calculo as c
 from .conformidade import problemas_ferias, proximo_periodo_aquisitivo
@@ -338,10 +339,14 @@ def ferias_nova(request):
         func = get_object_or_404(Funcionario, pk=fid, empresa=request.empresa)
         ini, fim = proximo_periodo_aquisitivo(func, timezone.localdate())
         initial = {"funcionario": func, "aquisitivo_inicio": ini, "aquisitivo_fim": fim, "dias": 30}
+    if pedido := pedido_em_aberto(request, "ferias"):
+        initial.update(iniciais(pedido))
     form = FeriasForm(request.POST or None, empresa=request.empresa, initial=initial)
     if request.method == "POST" and form.is_valid():
         fe = form.save()
         calcular_ferias(fe)
+        if pedido:
+            aprovar(request, pedido, ferias=fe, funcionario=fe.funcionario)
         messages.success(request, f"Férias calculadas: líquido de R$ {fe.liquido} a pagar até "
                                   f"{fe.data_pagamento:%d/%m/%Y}.")
         empresa = request.empresa
@@ -355,7 +360,7 @@ def ferias_nova(request):
             else:
                 messages.info(request, "O aviso de férias (S-2230) foi para a fila do eSocial.")
         return redirect("folha:ferias_detalhe", pk=fe.pk)
-    return render(request, "folha/ferias_form.html", {"form": form})
+    return render(request, "folha/ferias_form.html", {"form": form, **contexto(pedido)})
 
 
 @login_required
@@ -466,6 +471,8 @@ def rescisao_nova(request):
     initial = {"data_desligamento": timezone.localdate(), "data_aviso": timezone.localdate()}
     if fid := request.GET.get("funcionario"):
         initial["funcionario"] = get_object_or_404(Funcionario, pk=fid, empresa=request.empresa)
+    if pedido := pedido_em_aberto(request, "sair"):
+        initial.update(iniciais(pedido))
     form = RescisaoForm(request.POST or None, empresa=request.empresa, initial=initial)
     if request.method == "POST" and form.is_valid():
         resc = form.save()
@@ -474,7 +481,9 @@ def rescisao_nova(request):
         except ErroRescisao as exc:
             resc.delete()
             messages.error(request, str(exc))
-            return render(request, "folha/rescisao_form.html", {"form": form, "regras": REGRAS})
+            return render(request, "folha/rescisao_form.html", {"form": form, "regras": REGRAS, **contexto(pedido)})
+        if pedido:
+            aprovar(request, pedido, rescisao=resc, funcionario=resc.funcionario)
         messages.success(request, f"Rescisão calculada: líquido de R$ {resc.liquido} a pagar até "
                                   f"{resc.data_pagamento:%d/%m/%Y}.")
         if request.empresa.envio_automatico:
@@ -487,7 +496,7 @@ def rescisao_nova(request):
             if problema := tentar_processar(request.empresa):
                 messages.warning(request, problema)
         return redirect("folha:rescisao_detalhe", pk=resc.pk)
-    return render(request, "folha/rescisao_form.html", {"form": form, "regras": REGRAS})
+    return render(request, "folha/rescisao_form.html", {"form": form, "regras": REGRAS, **contexto(pedido)})
 
 
 def _rescisao(request, pk):
