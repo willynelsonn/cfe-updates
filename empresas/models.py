@@ -121,6 +121,7 @@ class Empresa(models.Model):
     SITUACAO = [("em_analise", "Em análise"), ("ativa", "Ativa"), ("recusada", "Recusada")]
     situacao = models.CharField("situação", max_length=10, choices=SITUACAO, default="ativa")
     motivo_recusa = models.TextField("motivo da recusa", blank=True)
+    funcionarios_informados = models.PositiveIntegerField("funcionários informados no cadastro", null=True, blank=True)
     validada_em = models.DateTimeField(null=True, blank=True, editable=False)
     validada_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, editable=False, related_name="+"
@@ -209,6 +210,8 @@ class Acesso(models.Model):
 
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="acessos")
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="acessos")
+    cpf = models.CharField("CPF", max_length=11, blank=True)
+    celular = models.CharField(max_length=20, blank=True)
     termos_versao = models.CharField("versão dos termos aceitos", max_length=20)
     termos_aceitos_em = models.DateTimeField(default=timezone.now)
     criado_em = models.DateTimeField(auto_now_add=True)

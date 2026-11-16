@@ -17,6 +17,10 @@ def _chaves(request, usuario: str) -> list[str]:
 
 
 class LoginComBloqueioForm(AuthenticationForm):
+    def clean_username(self):
+        usuario = self.cleaned_data.get("username", "")
+        return usuario.lower() if "@" in usuario else usuario  # a dona entra com o e-mail, em qualquer caixa
+
     def clean(self):
         usuario = self.data.get("username", "")
         chaves = _chaves(self.request, usuario)
