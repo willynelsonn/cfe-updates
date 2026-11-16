@@ -12,6 +12,18 @@ def dona(emp, email="dona@exemplo.com", senha="Senha-da-dona-2026") -> User:
     return u
 
 
+def usar_banco_nos_anexos(caso):
+    """Anexos dos testes vão para o banco (desfeito a cada teste), como na nuvem; nunca para a pasta private_media."""
+    from unittest import mock
+
+    from empresas.armazenamento import BancoStorage
+    from portal.models import Anexo
+
+    p = mock.patch.object(Anexo._meta.get_field("arquivo"), "storage", BancoStorage())
+    p.start()
+    caso.addCleanup(p.stop)
+
+
 def duas_empresas():
     a = empresa(razao_social="Empresa A LTDA", nr_insc="11.222.333/0001-81")
     b = empresa(razao_social="Empresa B LTDA", nr_insc="42.127.447/0001-76")
