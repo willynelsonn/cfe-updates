@@ -4,7 +4,14 @@
 {% block content %}
 <div class="topo">
   <div><h1>Funcionários</h1><div class="subtitulo">Ao cadastrar, a admissão vai sozinha para o eSocial. Clique no nome para ver custo, férias, holerites e rescisão.</div></div>
-  <a class="btn primario" href="{% url 'pessoal:novo' %}">{% icone "mais" %} Admitir funcionário</a>
+  <div class="acoes">
+    {% if user.is_staff %}
+    <a class="btn" href="{% url 'pessoal:exportar' %}" title="Planilha do Excel com todos os funcionários desta empresa">{% icone "baixar" %} Exportar</a>
+    <a class="btn fantasma" href="{% url 'pessoal:exportar' %}?formato=csv">CSV</a>
+    <a class="btn" href="{% url 'pessoal:importar' %}">{% icone "enviar" %} Importar</a>
+    {% endif %}
+    <a class="btn primario" href="{% url 'pessoal:novo' %}">{% icone "mais" %} Admitir funcionário</a>
+  </div>
 </div>
 <form method="get" class="acoes" style="margin-bottom:14px" role="search">
   <label class="sr-only" for="busca">Buscar</label>

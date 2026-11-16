@@ -1,13 +1,21 @@
+import base64
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth.mixins import UserPassesTestMixin
+from django.db import IntegrityError
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils.text import slugify
+from django.views import View
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from empresas.mixins import EmpresaRequiredMixin
 from esocial.servico import ErroESocial, gerar_admissao, gerar_desligamento, tentar_processar
 
+from . import planilha
 from .forms import CargoForm, DependenteForm, DesligamentoForm, FuncionarioForm
 from .models import Cargo, Dependente, Funcionario
 
@@ -176,3 +184,75 @@ def excluir_dependente(request, pk):
     dep.delete()
     messages.success(request, "Dependente excluído.")
     return redirect("pessoal:detalhe", pk=func_pk)
+
+
+class EscritorioMixin(EmpresaRequiredMixin, UserPassesTestMixin):
+    """Só a equipe do escritório (is_staff), sempre na empresa ativa."""
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+
+class ExportarView(EscritorioMixin, View):
+    TIPOS = {
+        "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "csv": "text/csv; charset=utf-8",
+    }
+
+    def get(self, request):
+        formato = "csv" if request.GET.get("formato") == "csv" else "xlsx"
+        resp = HttpResponse(planilha.exportar(self.empresa, formato), content_type=self.TIPOS[formato])
+        nome = f"funcionarios-{slugify(self.empresa.razao_social)}.{formato}"
+        resp["Content-Disposition"] = f'attachment; filename="{nome}"'
+        return resp
+
+
+class ImportarView(EscritorioMixin, View):
+    """Envia a planilha, mostra a prévia (nada gravado) e só grava quando a pessoa confirma."""
+
+    template_name = "pessoal/importar.html"
+    SESSAO = "importacao_funcionarios"
+    LIMITE = 2 * 1024 * 1024
+
+    def get(self, request):
+        return render(request, self.template_name)
+
+    def post(self, request):
+        confirmar = "confirmar" in request.POST
+        if confirmar:
+            guardado = request.session.get(self.SESSAO)
+            if not guardado or guardado["empresa"] != self.empresa.pk:
+                messages.error(request, "A importação expirou ou a empresa ativa mudou. Envie o arquivo de novo.")
+                return redirect("pessoal:importar")
+            conteudo, nome, ja_no_esocial = base64.b64decode(guardado["conteudo"]), guardado["nome"], guardado["ja_no_esocial"]
+        else:
+            arquivo = request.FILES.get("arquivo")
+            if arquivo is None or arquivo.size > self.LIMITE:
+                messages.error(request, "Escolha uma planilha .xlsx ou .csv de até 2 MB.")
+                return redirect("pessoal:importar")
+            conteudo, nome, ja_no_esocial = arquivo.read(), arquivo.name, "ja_no_esocial" in request.POST
+        try:
+            linhas, ignoradas = planilha.analisar(conteudo, nome, self.empresa, ja_no_esocial)
+        except planilha.ErroPlanilha as exc:
+            messages.error(request, str(exc))
+            return redirect("pessoal:importar")
+        tem_erro = any(l.erros for l in linhas)
+        if confirmar and not tem_erro:
+            try:
+                criados, atualizados = planilha.gravar(linhas)
+            except IntegrityError:
+                messages.error(request, "Nada foi gravado: duas pessoas ficariam com a mesma matrícula. Confira a planilha.")
+                return redirect("pessoal:importar")
+            del request.session[self.SESSAO]
+            messages.success(request, f"Importação concluída: {criados} cadastrado(s) e {atualizados} atualizado(s). "
+                                      "Nada foi enviado ao eSocial.")
+            return redirect("pessoal:lista")
+        request.session[self.SESSAO] = {
+            "empresa": self.empresa.pk, "nome": nome, "ja_no_esocial": ja_no_esocial,
+            "conteudo": base64.b64encode(conteudo).decode(),
+        }
+        return render(request, self.template_name, {
+            "linhas": linhas, "ignoradas": ignoradas, "tem_erro": tem_erro, "nome_arquivo": nome,
+            "resumo": {a: sum(l.acao == a and not l.erros for l in linhas) for a in ("criar", "atualizar", "igual")},
+            "com_erro": sum(bool(l.erros) for l in linhas),
+        })

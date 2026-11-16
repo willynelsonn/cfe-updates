@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Importar funcionários{% endblock %}
+{% block content %}
+<div class="topo">
+  <div><h1>Importar funcionários</h1><div class="subtitulo">Empresa: {{ request.empresa }}</div></div>
+  <a class="btn fantasma" href="{% url 'pessoal:lista' %}">Voltar</a>
+</div>
+
+{% if not linhas %}
+<div class="explica">
+  Envie uma planilha <strong>.xlsx</strong> ou <strong>.csv</strong> com um funcionário por linha e os nomes das colunas na
+  primeira linha. Para ter o modelo, clique em <a href="{% url 'pessoal:exportar' %}">Exportar</a> na tela de Funcionários.
+  Quem já existe nesta empresa (mesmo CPF) é atualizado; os demais são cadastrados. Célula vazia não apaga dado.
+  O cargo precisa já estar cadastrado em <a href="{% url 'pessoal:cargos' %}">Cargos</a>.
+  Antes de gravar, você vê uma prévia. A importação <strong>não envia nada ao eSocial</strong>.
+</div>
+<form method="post" enctype="multipart/form-data" class="card">
+  {% csrf_token %}
+  <div class="form-grid">
+    <div class="campo"><label for="arquivo">Planilha (.xlsx ou .csv, até 2 MB)</label>
+      <input id="arquivo" type="file" name="arquivo" accept=".xlsx,.csv,.txt" required></div>
+    <div class="campo"><label><input type="checkbox" name="ja_no_esocial" checked>
+      Os funcionários novos já foram enviados ao eSocial por outro sistema (ex.: Domínio)</label>
+      <div class="ajuda">Assim o FolhaWeb não manda a admissão (S-2200) deles de novo. Se a planilha tiver a coluna própria, vale o que estiver nela.</div></div>
+  </div>
+  <div class="rodape-form"><button class="btn primario" type="submit" data-ocupado="Lendo">{% icone "enviar" %} Ver prévia</button></div>
+</form>
+{% else %}
+<div class="explica">
+  Prévia de <strong>{{ nome_arquivo }}</strong>. Nada foi gravado ainda.
+  {{ resumo.criar }} para cadastrar, {{ resumo.atualizar }} para atualizar, {{ resumo.igual }} sem mudança{% if com_erro %}, <strong>{{ com_erro }} com erro</strong>{% endif %}.
+</div>
+{% if ignoradas %}<div class="msg warning"><div>Colunas que o FolhaWeb não conhece e vão ser ignoradas: {{ ignoradas|join:", " }}.</div></div>{% endif %}
+{% if tem_erro %}<div class="msg error"><div>Corrija as linhas com erro na planilha e envie de novo. Nada é gravado enquanto houver erro.</div></div>{% endif %}
+<div class="tabela"><table>
+  <thead><tr><th>Linha</th><th>Funcionário</th><th>CPF</th><th>O que vai acontecer</th><th>Detalhes</th></tr></thead>
+  <tbody>
+  {% for l in linhas %}
+    <tr>
+      <td>{{ l.numero }}</td>
+      <td>{{ l.nome|default:"—" }}</td>
+      <td>{{ l.cpf|default:"—" }}</td>
+      <td>{% if l.erros %}<span class="tag erro">Erro</span>{% elif l.acao == "criar" %}<span class="tag aceito">Cadastrar</span>{% elif l.acao == "atualizar" %}<span class="tag pendente">Atualizar</span>{% else %}<span class="tag">Sem mudança</span>{% endif %}</td>
+      <td>{% if l.erros %}<ul>{% for e in l.erros %}<li>{{ e }}</li>{% endfor %}</ul>{% elif l.mudancas %}Muda: {{ l.mudancas|join:", " }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<div class="rodape-form">
+  {% if not tem_erro %}
+  <form method="post">{% csrf_token %}<button class="btn primario" name="confirmar" value="1" data-ocupado="Gravando">{% icone "ok" %} Confirmar e gravar</button></form>
+  {% endif %}
+  <a class="btn fantasma" href="{% url 'pessoal:importar' %}">Enviar outro arquivo</a>
+</div>
+{% endif %}
+{% endblock %}
