@@ -1,0 +1,32 @@
+{% extends "portal/base.html" %}
+{% block title %}Convite{% endblock %}
+{% block conteudo %}
+<h1>Portal da <em>{{ convite.empresa.razao_social }}</em></h1>
+{% if user.is_authenticated %}
+  <p class="muted" style="margin:0 0 18px">O escritório convidou você para acompanhar esta empresa. Ela vai aparecer junto com a que você já tem.</p>
+  <form method="post" class="card">
+    {% csrf_token %}
+    <button class="btn primario grande" type="submit" style="width:100%" data-ocupado="Vinculando">Vincular à minha conta</button>
+  </form>
+{% else %}
+  <p class="muted" style="margin:0 0 18px">O escritório convidou você. Crie sua conta para acompanhar a folha, os pagamentos e os pedidos pelo celular.</p>
+  <form method="post" class="card" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="msg error" role="alert"><div>{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div></div>{% endif %}
+    <div class="form-grid">
+      {% with campo=form.nome %}{% include "_campo.html" %}{% endwith %}
+      {% with campo=form.cpf %}{% include "_campo.html" %}{% endwith %}
+      {% with campo=form.email %}{% include "_campo.html" %}{% endwith %}
+      {% with campo=form.senha1 %}{% include "_campo.html" %}{% endwith %}
+      {% with campo=form.senha2 %}{% include "_campo.html" %}{% endwith %}
+    </div>
+    <p class="muted" style="font-size:12px;margin:6px 0 0">Pelo menos 8 caracteres, sem ser só números nem parecida com o seu nome ou e-mail.</p>
+    <div class="campo {% if form.aceite.errors %}tem-erro{% endif %}" style="margin-top:18px">
+      <label>{{ form.aceite }} Li e aceito os <a href="{% url 'portal:termos' %}" target="_blank" rel="noopener">Termos de uso</a> e a <a href="{% url 'portal:privacidade' %}" target="_blank" rel="noopener">Política de privacidade</a></label>
+      {% if form.aceite.errors %}<div class="erro">Para continuar, marque que leu e aceita.</div>{% endif %}
+    </div>
+    <button class="btn primario grande" type="submit" style="width:100%;margin-top:20px" data-ocupado="Criando">Criar minha conta</button>
+  </form>
+  <p class="muted" style="text-align:center">Já tem conta? <a href="{% url 'login' %}?next={{ request.path|urlencode }}">Entre para vincular</a></p>
+{% endif %}
+{% endblock %}

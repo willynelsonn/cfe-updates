@@ -21,11 +21,12 @@
     <form method="post" class="caixa">
       {% csrf_token %}
       <h1>Bem-vindo de volta</h1>
-      <p class="muted" style="margin:8px 0 24px">Entre com o usuário e a senha fornecidos pelo escritório.</p>
+      <p class="muted" style="margin:8px 0 24px">Entre com seu e-mail (ou o usuário do escritório) e a senha.</p>
       {% if form.non_field_errors %}<div class="msg error">{% for e in form.non_field_errors %}{% if "tentativas" in e %}{{ e }}{% else %}Usuário ou senha incorretos.{% endif %}{% endfor %}</div>{% endif %}
-      <div class="campo"><label for="id_username">Usuário</label>{{ form.username }}</div>
+      <div class="campo"><label for="id_username">E-mail ou usuário</label>{{ form.username }}</div>
       <div class="campo" style="margin-top:14px"><label for="id_password">Senha</label>{{ form.password }}</div>
       <button class="btn primario grande" type="submit" style="width:100%;margin-top:22px" data-ocupado="Entrando">Entrar</button>
+      <p class="muted" style="text-align:center;margin:18px 0 0">Sua empresa ainda não tem acesso? <a href="{% url 'portal:cadastro' %}">Cadastrar minha empresa</a></p>
     </form>
   </div>
 </div>

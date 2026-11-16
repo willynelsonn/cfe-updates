@@ -1,0 +1,39 @@
+{% extends "portal/base.html" %}
+{% block title %}Cadastrar minha empresa{% endblock %}
+{% block conteudo %}
+<h1>Cadastre sua <em>empresa</em></h1>
+<p class="muted" style="margin:0 0 18px">Leva uns 3 minutos. O escritório confere os dados e libera o seu acesso.</p>
+{% if bloqueado %}<div class="msg error" role="alert"><div>Muitas tentativas a partir desta conexão. Tente de novo daqui a uma hora.</div></div>{% endif %}
+<form method="post" class="card" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="msg error" role="alert"><div>{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div></div>{% endif %}
+  <h2 style="margin:0 0 12px;font-size:17px">Sobre você</h2>
+  <div class="form-grid">
+    {% with campo=form.nome %}{% include "_campo.html" %}{% endwith %}
+    {% with campo=form.cpf %}{% include "_campo.html" %}{% endwith %}
+    {% with campo=form.email %}{% include "_campo.html" %}{% endwith %}
+    {% with campo=form.celular %}{% include "_campo.html" %}{% endwith %}
+  </div>
+  <h2 style="margin:22px 0 12px;font-size:17px">Sobre a empresa</h2>
+  <div class="form-grid">
+    {% with campo=form.cnpj %}{% include "_campo.html" %}{% endwith %}
+    {% if form.razao_social.errors or form.razao_social.value %}{% with campo=form.razao_social %}{% include "_campo.html" %}{% endwith %}{% endif %}
+    {% with campo=form.funcionarios %}{% include "_campo.html" %}{% endwith %}
+  </div>
+  <h2 style="margin:22px 0 12px;font-size:17px">Sua senha</h2>
+  <div class="form-grid">
+    {% with campo=form.senha1 %}{% include "_campo.html" %}{% endwith %}
+    {% with campo=form.senha2 %}{% include "_campo.html" %}{% endwith %}
+  </div>
+  <p class="muted" style="font-size:12px;margin:6px 0 0">Pelo menos 8 caracteres, sem ser só números nem parecida com o seu nome ou e-mail.</p>
+  <div class="campo {% if form.aceite.errors %}tem-erro{% endif %}" style="margin-top:18px">
+    <label>{{ form.aceite }} Li e aceito os <a href="{% url 'portal:termos' %}" target="_blank" rel="noopener">Termos de uso</a> e a <a href="{% url 'portal:privacidade' %}" target="_blank" rel="noopener">Política de privacidade</a></label>
+    {% if form.aceite.errors %}<div class="erro">Para continuar, marque que leu e aceita.</div>{% endif %}
+  </div>
+  <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
+    <label for="id_site">Não preencha</label><input type="text" name="site" id="id_site" tabindex="-1" autocomplete="off">
+  </div>
+  <button class="btn primario grande" type="submit" style="width:100%;margin-top:20px" data-ocupado="Enviando">Cadastrar minha empresa</button>
+</form>
+<p class="muted" style="text-align:center">Já tem conta? <a href="{% url 'login' %}">Entrar</a></p>
+{% endblock %}

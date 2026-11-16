@@ -16,6 +16,7 @@ urlpatterns = [
     path("funcionarios/", include("pessoal.urls")),
     path("folha/", include("folha.urls")),
     path("esocial/", include("esocial.urls")),
+    path("", include("portal.urls")),
     # O login do admin passa pela mesma tela com bloqueio de tentativas.
     path("admin/login/", RedirectView.as_view(url="/entrar/?next=/admin/", query_string=False)),
     path("admin/", admin.site.urls),

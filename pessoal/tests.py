@@ -138,8 +138,8 @@ class PlanilhaFuncionariosTest(TestCase):
         self.assertEqual(Funcionario.objects.get(empresa=outra, cpf="12345678909").salario, Decimal("1000"))
 
     def test_so_equipe_do_escritorio(self):
+        # Quem não é do escritório nem chega às telas (PortalMiddleware): abrir vai para o portal, enviar dá 403.
         self.client.force_login(get_user_model().objects.create_user("cliente", password="x"))
-        self.assertEqual(self.client.get(reverse("pessoal:exportar")).status_code, 403)
-        self.assertEqual(self.client.get(self.url).status_code, 403)
+        for url in (reverse("pessoal:exportar"), self.url, reverse("pessoal:lista")):
+            self.assertRedirects(self.client.get(url), "/cliente/", fetch_redirect_response=False)
         self.assertEqual(self.enviar(csv_arquivo(CABECALHO, NOVA)).status_code, 403)
-        self.assertNotContains(self.client.get(reverse("pessoal:lista")), reverse("pessoal:importar"))

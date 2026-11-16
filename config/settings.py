@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "pessoal",
     "folha",
     "esocial",
+    "portal",
 ]
 
 MIDDLEWARE = [
@@ -63,6 +64,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "empresas.middleware.EmpresaAtivaMiddleware",
+    "empresas.middleware.PortalMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -226,3 +228,8 @@ if not DEBUG:
 # Cor do sistema usada quando o usuário ainda não escolheu outra no menu da conta.
 # Opções: laranja, azul, verde, roxo, rosa, grafite.
 FOLHA_COR_PADRAO = os.environ.get("FOLHA_COR_PADRAO", "grafite")
+
+# Portal do cliente: o escritório que recebe a procuração das empresas.
+FOLHA_ESCRITORIO_CNPJ = os.environ.get("FOLHA_ESCRITORIO_CNPJ", "")
+FOLHA_ESCRITORIO_NOME = os.environ.get("FOLHA_ESCRITORIO_NOME", "seu escritório")
+CADASTRO_MAX_POR_HORA = int(os.environ.get("FOLHA_CADASTRO_MAX_POR_HORA", "5"))  # por IP

@@ -88,7 +88,7 @@ class ComandosServidorTests(TestCase):
         self.assertIn("_auth_user_id", self.client.session)
 
     def test_tema_escolhido_fica_na_conta_depois_de_sair(self):
-        User.objects.create_user("dani", password="senha-da-dani-123")
+        User.objects.create_user("dani", password="senha-da-dani-123", is_staff=True)
         self.client.login(username="dani", password="senha-da-dani-123")
         self.assertEqual(self.client.post("/conta/preferencias/", {"cor": "verde", "tema": "dark"}).status_code, 204)
         self.client.post("/conta/preferencias/", {"cor": "invalida", "tema": "x"})  # valores fora da lista são ignorados

@@ -2,6 +2,7 @@
 {% load static ui %}
 {% block title %}Painel{% endblock %}
 {% block content %}
+{% if empresas_para_conferir %}<div class="msg warning" role="status">{% icone "info" %}<div>{{ empresas_para_conferir }} empresa{{ empresas_para_conferir|pluralize }} nova{{ empresas_para_conferir|pluralize }} para conferir. <a href="{% url 'empresas:lista' %}">Abrir a lista</a></div></div>{% endif %}
 {% if not empresa_ativa %}
 <div class="card vazio" style="max-width:560px;margin:40px auto">
   {% icone "predio" %}

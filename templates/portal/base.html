@@ -1,0 +1,41 @@
+{% load ui %}<!doctype html>
+<html lang="pt-br" data-cor="{{ preferencia.cor|default:cor_padrao|default:'laranja' }}"{% if preferencia.tema %} data-theme="{{ preferencia.tema }}"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Portal{% endblock %} · FolhaWeb</title>
+  <script>
+    try {
+      var r = document.documentElement;
+      if (!r.dataset.theme) { var t = localStorage.getItem("tema"); if (t) r.dataset.theme = t; }
+    } catch (e) {}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="{% estatico 'css/app.css' %}">
+  <style>
+    .portal { max-width: 560px; margin: 0 auto; padding: 0 16px 40px; }
+    .portal-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; }
+    .portal-topo .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); }
+    .portal h1 { font-size: 28px; letter-spacing: -.02em; margin: 12px 0 6px; line-height: 1.15; }
+    .portal h1 em { font-family: var(--serif); font-weight: 400; font-size: 1.1em; }
+    .portal .card { margin-bottom: 14px; }
+    .portal .passos { margin: 0; padding-left: 22px; display: grid; gap: 10px; line-height: 1.5; }
+    .portal .destaque-cnpj { font-weight: 800; white-space: nowrap; }
+  </style>
+</head>
+<body>
+{% include "_icones.html" %}
+<div class="portal">
+  <header class="portal-topo">
+    <span class="brand"><span class="logo">FW</span><span>FolhaWeb</span></span>
+    {% if user.is_authenticated %}
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn pequeno" type="submit">{% icone "sair" "sm" %} Sair</button></form>
+    {% endif %}
+  </header>
+  {% for m in messages %}<div class="msg {{ m.tags }}" role="status">{% if m.tags == 'error' %}{% icone "alerta" %}{% elif m.tags == 'success' %}{% icone "ok" %}{% else %}{% icone "info" %}{% endif %}<div>{{ m }}</div></div>{% endfor %}
+  <main>{% block conteudo %}{% endblock %}</main>
+</div>
+</body>
+</html>

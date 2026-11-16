@@ -1,0 +1,38 @@
+{% extends "portal/base.html" %}
+{% block title %}Início{% endblock %}
+{% block conteudo %}
+{% if not empresa %}
+  <h1>Olá, {{ user.first_name|default:"tudo bem" }}</h1>
+  <div class="card"><p style="margin:0">Sua conta ainda não está ligada a nenhuma empresa. Fale com o escritório.</p></div>
+
+{% elif empresa.situacao == "em_analise" %}
+  <h1>Recebemos seu cadastro</h1>
+  <p class="muted" style="margin:0 0 18px">{{ empresa.razao_social }} está em análise. O escritório confere os dados e libera o portal.</p>
+  <section class="card" aria-labelledby="t-procuracao">
+    <h2 id="t-procuracao" style="margin:0 0 6px">Enquanto isso: dê a procuração ao escritório</h2>
+    <p class="muted" style="margin:0 0 14px">Sem ela, o escritório não pode mandar a folha da sua empresa ao eSocial. Leva uns 5 minutos.</p>
+    <ol class="passos">
+      <li>Entre no <strong>e-CAC</strong> da Receita Federal com a sua conta gov.br (nível prata ou ouro).</li>
+      <li>No alto da tela, clique em <strong>Alterar perfil de acesso</strong> e escolha o CNPJ da sua empresa.</li>
+      <li>Abra <strong>Senhas e Procurações</strong> e depois <strong>Cadastro, consulta e cancelamento – Procuração para e-CAC</strong>.</li>
+      <li>Em quem vai receber a procuração, informe o CNPJ <span class="destaque-cnpj">{{ escritorio_cnpj|default:"do escritório" }}</span> ({{ escritorio_nome }}).</li>
+      <li>Marque os serviços do <strong>eSocial</strong>, escolha a validade e confirme.</li>
+    </ol>
+  </section>
+
+{% elif empresa.situacao == "recusada" %}
+  <h1>Não conseguimos liberar o cadastro</h1>
+  <div class="card">
+    <p style="margin:0 0 8px"><strong>O que o escritório disse:</strong></p>
+    <p style="margin:0">{{ empresa.motivo_recusa|linebreaksbr }}</p>
+  </div>
+  <p class="muted">Se precisar, fale com o escritório.</p>
+
+{% else %}
+  <h1>Tudo certo, <em>{{ user.first_name|default:"bem-vinda" }}</em></h1>
+  <div class="card">
+    <p style="margin:0 0 4px"><strong>{{ empresa.razao_social }}</strong></p>
+    <p class="muted" style="margin:0">O escritório já cuida da folha da sua empresa. Em breve, pagamentos, holerites e pedidos aparecem aqui.</p>
+  </div>
+{% endif %}
+{% endblock %}

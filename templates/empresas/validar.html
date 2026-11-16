@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Conferir empresa{% endblock %}
+{% block content %}
+<div class="topo"><h1>Conferir: {{ empresa.razao_social }}</h1>{% if empresa.situacao == "em_analise" %}<span class="tag pendente">Em análise</span>{% endif %}</div>
+<div class="explica">A dona cadastrou a empresa pelo site. Confira os dados, complete a parte técnica e libere. O envio automático ao eSocial fica desligado até o certificado ser enviado; o transmissor em branco vira o CNPJ do escritório.</div>
+
+<section class="card" aria-labelledby="t-informou">
+  <h2 id="t-informou" style="margin-top:0">O que a dona informou</h2>
+  <p style="margin:0 0 6px"><strong>CNPJ:</strong> {{ empresa.nr_insc_formatado }} · <strong>Cidade:</strong> {{ empresa.municipio|default:"—" }}{% if empresa.uf %}/{{ empresa.uf }}{% endif %} · <strong>Funcionários registrados:</strong> {{ empresa.funcionarios_informados|default_if_none:"—" }}</p>
+  {% for a in acessos %}
+  <p style="margin:0 0 6px"><strong>{{ a.usuario.get_full_name|default:a.usuario.username }}</strong> · {{ a.usuario.email }} · CPF {{ a.cpf|default:"—" }} · {{ a.celular|default:"sem celular" }} · aceitou os termos (versão {{ a.termos_versao }}) em {{ a.termos_aceitos_em|date:"d/m/Y H:i" }}</p>
+  {% empty %}<p class="muted" style="margin:0">Ninguém ligado a esta empresa ainda.</p>{% endfor %}
+</section>
+
+<form method="post" class="card">
+  {% csrf_token %}
+  <h2 style="margin-top:0">Dados técnicos</h2>
+  {% if form.non_field_errors %}<div class="erros">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="form-grid">
+    {% for campo in form %}{% include "_campo.html" %}{% endfor %}
+  </div>
+  <div class="rodape-form">
+    <button class="btn primario" type="submit" name="acao" value="liberar" data-ocupado="Liberando">Liberar empresa</button>
+  </div>
+</form>
+
+<form method="post" class="card">
+  {% csrf_token %}
+  <h2 style="margin-top:0">Recusar</h2>
+  <div class="campo {% if erro_motivo %}tem-erro{% endif %}">
+    <label for="id_motivo">Motivo (a dona vai ler)</label>
+    <textarea name="motivo" id="id_motivo" rows="3">{{ request.POST.motivo }}</textarea>
+    {% if erro_motivo %}<div class="erro">{{ erro_motivo }}</div>{% endif %}
+  </div>
+  <div class="rodape-form">
+    <button class="btn perigo" type="submit" name="acao" value="recusar">Recusar cadastro</button>
+  </div>
+</form>
+{% endblock %}
