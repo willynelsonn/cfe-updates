@@ -9,6 +9,15 @@
     <label for="link-convite">Link do convite</label>
     <input id="link-convite" type="text" readonly value="{{ link }}" onclick="this.select()">
   </div>
+  <form method="post" action="{% url 'empresas:convite_email' empresa.pk %}" class="campo">
+    {% csrf_token %}
+    <input type="hidden" name="codigo" value="{{ codigo }}">
+    <label for="email-convite">Ou mande por e-mail</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="email-convite" type="email" name="email" required placeholder="e-mail da dona" style="flex:1;min-width:200px">
+      <button class="btn" type="submit">Mandar por e-mail</button>
+    </div>
+  </form>
   <div class="rodape-form">
     <a class="btn primario" href="{{ whatsapp }}" target="_blank" rel="noopener">Mandar pelo WhatsApp</a>
     <a class="btn fantasma" href="{% url 'empresas:lista' %}">Voltar para a lista</a>

@@ -11,4 +11,5 @@ urlpatterns = [
     path("<int:pk>/certificado/", views.certificado, name="certificado"),
     path("<int:pk>/validar/", views.validar, name="validar"),
     path("<int:pk>/convidar/", views.convidar, name="convidar"),
+    path("<int:pk>/convite/email/", views.convite_email, name="convite_email"),
 ]
