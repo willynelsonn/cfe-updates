@@ -8,7 +8,7 @@ já enviados e transmite apenas os eventos cujas dependências foram aceitas. Ch
 repetidamente (pela tela, a cada poucos segundos, ou pelo comando ``processar_esocial``
 no agendador do servidor), ele leva tudo até o fim sem intervenção:
 
-    S-1000 → S-1005/S-1020/S-1010 → S-2200 → S-2230/S-2299
+    S-1000 → S-1005/S-1020/S-1010 → S-2200 → S-2205/S-2206/S-2230/S-2299
                                            → S-1200 → S-1210 → S-1299 → DCTFWeb / FGTS Digital
 """
 
@@ -67,15 +67,16 @@ def _dep_admissao(funcionario) -> list[str]:
     return [] if funcionario.esocial_ja_cadastrado else [chave_admissao(funcionario)]
 
 
-def _registrar(empresa, tipo, descricao, id_evento, root, *, chave="", depende=(), **extra) -> Evento:
+def _registrar(empresa, tipo, descricao, id_evento, root, *, chave="", depende=(), problemas=(), **extra) -> Evento:
+    """``problemas``: o que o eSocial recusaria; o evento entra com erro e a mensagem diz o que corrigir."""
     xml = xe.para_bytes(root)
-    erros = validar_evento(tipo, xml, assinado=False)
+    erros = [*problemas, *(f"Schema: {e}" for e in validar_evento(tipo, xml, assinado=False))]
     # Um novo evento com a mesma chave substitui os anteriores que ainda não foram aceitos.
     if chave:
         Evento.objects.filter(empresa=empresa, chave=chave, status__in=["pendente", "erro", "rejeitado"]).delete()
     return Evento.objects.create(
         empresa=empresa, tipo=tipo, descricao=descricao, id_evento=id_evento, xml=xml.decode(),
-        status="erro" if erros else "pendente", mensagens=[f"Schema: {e}" for e in erros],
+        status="erro" if erros else "pendente", mensagens=erros,
         chave=chave, depende=list(depende), **extra,
     )
 
@@ -142,6 +143,53 @@ def gerar_desligamento(funcionario) -> Evento:
         funcionario.empresa, "S-2299", f"Desligamento de {funcionario.nome}", *xe.s2299(funcionario, resc),
         chave=f"S-2299:func:{funcionario.pk}", depende=deps, funcionario=funcionario,
     )
+
+
+CAMPOS_S2205 = {"nome", "sexo", "raca_cor", "estado_civil", "grau_instrucao", "nome_social", "cep", "logradouro",
+                "numero", "complemento", "bairro", "cod_municipio", "uf", "telefone", "email"}
+CAMPOS_S2206 = {"cargo", "salario", "categoria", "tipo_contrato", "data_termino", "horas_semanais", "tipo_jornada",
+                "descricao_jornada"}
+
+
+def gerar_alteracoes(funcionario, campos: set[str], data: date) -> list[Evento]:
+    """Leva ao eSocial o que mudou no cadastro: S-2205 (dados pessoais) e/ou S-2206 (contrato).
+
+    Admissão ainda não transmitida é gerada de novo com os dados novos; sem admissão no eSocial, nada sai.
+    Banco, Pix, VT e benefícios não vão ao eSocial."""
+    f = funcionario
+    pessoais, contrato = bool(campos & CAMPOS_S2205), bool(campos & CAMPOS_S2206)
+    if not (pessoais or contrato):
+        return []
+    if not f.esocial_ja_cadastrado:
+        adm = Evento.objects.filter(empresa=f.empresa, chave=chave_admissao(f)).order_by("-criado_em", "-pk").first()
+        if adm is None:
+            return []
+        if adm.corrigivel or adm.status == "pendente":
+            return [gerar_admissao(f)]
+    return [*([gerar_alteracao_cadastral(f, data)] if pessoais else []),
+            *([gerar_alteracao_contratual(f, data)] if contrato else [])]
+
+
+def _alteracao(tipo, descricao, montar, f, data, problemas) -> Evento:
+    chave = f"{tipo}:func:{f.pk}:{data:%Y-%m-%d}"
+    # Mesma data já aceita: o eSocial só aceita outra como retificação daquele recibo.
+    aceito = Evento.objects.filter(empresa=f.empresa, chave=chave, status="aceito").order_by("-criado_em", "-pk").first()
+    return _registrar(
+        f.empresa, tipo, f"{descricao} de {f.nome} ({data:%d/%m/%Y})", *montar(f, data, aceito.recibo if aceito else ""),
+        chave=chave, depende=_dep_admissao(f), problemas=problemas, funcionario=f,
+    )
+
+
+def gerar_alteracao_cadastral(funcionario, data: date) -> Evento:
+    problemas = ['Raça/cor: o eSocial não aceita "Não informado". Corrija no cadastro da pessoa e clique em '
+                 '"Gerar de novo".'] if funcionario.raca_cor == 6 else []
+    return _alteracao("S-2205", "Dados pessoais", xe.s2205, funcionario, data, problemas)
+
+
+def gerar_alteracao_contratual(funcionario, data: date) -> Evento:
+    problemas = [] if funcionario.empresa.cnpj_sindicato else [
+        'Informe o CNPJ do sindicato no cadastro da empresa e clique em "Gerar de novo".']
+    return _alteracao("S-2206", "Contrato", xe.s2206, funcionario, data, problemas)
 
 
 def gerar_ferias(ferias: Ferias) -> Evento:
@@ -244,6 +292,9 @@ def regerar(evento: Evento) -> Evento:
         return gerar_admissao(evento.funcionario)
     if evento.tipo == "S-2299" and evento.funcionario:
         return gerar_desligamento(evento.funcionario)
+    if evento.tipo in ("S-2205", "S-2206") and evento.funcionario:
+        gerar = gerar_alteracao_cadastral if evento.tipo == "S-2205" else gerar_alteracao_contratual
+        return gerar(evento.funcionario, date.fromisoformat(evento.chave.rsplit(":", 1)[1]))
     if evento.tipo == "S-2230" and evento.ferias:
         return gerar_ferias(evento.ferias)
     if evento.tipo in {"S-1000", "S-1005", "S-1020", "S-1010"}:
