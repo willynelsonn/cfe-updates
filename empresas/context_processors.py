@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.utils.functional import SimpleLazyObject
 
+from .acesso import eh_escritorio, empresas_do_usuario
 from .models import Empresa
 
 
@@ -17,7 +18,9 @@ def empresa_ativa(request):
         return {}
     return {
         "empresa_ativa": getattr(request, "empresa", None),
-        "empresas_disponiveis": Empresa.objects.filter(ativa=True).only("id", "razao_social", "nome_fantasia"),
+        "empresas_disponiveis": (
+            Empresa.objects.filter(ativa=True) if eh_escritorio(request.user) else empresas_do_usuario(request.user)
+        ).only("id", "razao_social", "nome_fantasia"),
         "pendencias_criticas": SimpleLazyObject(lambda: _criticos(request)),
     }
 

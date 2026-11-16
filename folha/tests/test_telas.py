@@ -16,7 +16,7 @@ from . import fabrica
 
 class TelasTest(TestCase):
     def setUp(self):
-        self.user = get_user_model().objects.create_user("contador", password="x")
+        self.user = get_user_model().objects.create_user("contador", password="x", is_staff=True)
         self.client.force_login(self.user)
 
     def test_simulador_de_contratacao(self):
@@ -123,7 +123,7 @@ class AutomacaoTest(TestCase):
 
         from esocial.tests.certificado_teste import gerar_pfx
 
-        self.user = get_user_model().objects.create_user("dp", password="x")
+        self.user = get_user_model().objects.create_user("dp", password="x", is_staff=True)
         self.client.force_login(self.user)
         self.emp = fabrica.empresa()
         self.emp.certificado.save("t.pfx", ContentFile(gerar_pfx("1")), save=False)
@@ -244,11 +244,11 @@ class AutomacaoTest(TestCase):
 
 class LoginTest(TestCase):
     def test_logado_em_entrar_vai_para_o_painel(self):
-        self.client.force_login(get_user_model().objects.create_user("x", password="x"))
+        self.client.force_login(get_user_model().objects.create_user("x", password="x", is_staff=True))
         self.assertRedirects(self.client.get(reverse("login")), reverse("dashboard"), fetch_redirect_response=False)
 
     def test_seletor_de_cores_no_menu_da_conta(self):
-        self.client.force_login(get_user_model().objects.create_user("y", password="y"))
+        self.client.force_login(get_user_model().objects.create_user("y", password="y", is_staff=True))
         fabrica.empresa()
         resp = self.client.get(reverse("dashboard"))
         for cor in ("laranja", "azul", "verde", "roxo", "rosa", "grafite"):
