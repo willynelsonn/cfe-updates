@@ -61,3 +61,9 @@ class AvisosTests(TestCase):
         [m] = mail.outbox
         self.assertEqual(m.to, ["escritorio@exemplo.com"])
         self.assertIn("/validar/", m.body)
+
+    def test_dona_que_cancela_nao_recebe_aviso_do_proprio_cancelamento(self):
+        p = Pedido.objects.create(empresa=self.a, criado_por=self.dona_a, tipo="duvida", respostas={"texto": "x"})
+        self.client.force_login(self.dona_a)
+        self.enviar(f"/cliente/pedidos/{p.pk}/cancelar/", {})
+        self.assertEqual([m.to for m in mail.outbox], [["escritorio@exemplo.com"]])

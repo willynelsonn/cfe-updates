@@ -173,7 +173,7 @@ def corrigir(request, pk):
 @require_POST
 def cancelar(request, pk):
     p = _pedido(request, pk, situacao__in=Pedido.ABERTOS)
-    p.mudar("cancelado", None, "A dona cancelou o pedido.")
+    p.mudar("cancelado", request.user, "A dona cancelou o pedido.")
     messages.success(request, "Pedido cancelado.")
     return redirect("portal:pedidos")
 
