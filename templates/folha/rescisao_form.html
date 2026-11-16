@@ -4,6 +4,7 @@
 {% block content %}
 <div class="topo"><div><h1>Calcular rescisão</h1>
   <div class="subtitulo">Escolha o funcionário e o motivo. O FolhaWeb aplica as verbas devidas em cada caso, calcula INSS, IRRF, FGTS e a multa, e envia o desligamento (S-2299) ao eSocial.</div></div></div>
+{% if pedido %}{% include "portal/_pedido_resumo.html" %}{% endif %}
 <form method="post" class="card" novalidate>
   {% csrf_token %}
   {% if form.non_field_errors %}<div class="msg error">{% icone "alerta" %}<div>{{ form.non_field_errors }}</div></div>{% endif %}
