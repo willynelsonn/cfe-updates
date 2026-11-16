@@ -76,7 +76,8 @@ def certificado(request, pk):
 @user_passes_test(eh_escritorio)
 def validar(request, pk):
     """O escritório confere a empresa que a dona cadastrou: completa os dados técnicos e libera, ou recusa."""
-    empresa = get_object_or_404(Empresa, pk=pk)
+    # Empresa já ativa não passa por aqui: liberar de novo desligaria o envio automático dela.
+    empresa = get_object_or_404(Empresa, pk=pk, situacao__in=["em_analise", "recusada"])
     acao = request.POST.get("acao") if request.method == "POST" else None
     form = ValidarEmpresaForm(request.POST if acao == "liberar" else None, instance=empresa)
     erro_motivo = ""

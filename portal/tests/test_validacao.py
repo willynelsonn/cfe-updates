@@ -73,3 +73,19 @@ class ValidacaoTests(TestCase):
     def test_painel_avisa_empresas_para_conferir(self):
         self.client.force_login(self.staff)
         self.assertContains(self.client.get("/"), "1 empresa nova para conferir")
+
+    def test_painel_usa_plural_com_duas_empresas(self):
+        Empresa.objects.create(razao_social="Bolos da Bia LTDA", nr_insc="98.765.432/0001-98", cnae="",
+                               situacao="em_analise", ativa=False)
+        self.client.force_login(self.staff)
+        self.assertContains(self.client.get("/"), "2 empresas novas para conferir")
+
+    def test_empresa_ja_ativa_nao_passa_pela_conferencia(self):
+        ativa = Empresa.objects.create(razao_social="Cliente Antiga LTDA", nr_insc="45.612.378/0001-84",
+                                       cnae="1091102", envio_automatico=True)
+        self.client.force_login(self.staff)
+        url = f"/empresas/{ativa.pk}/validar/"
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assertEqual(self.client.post(url, {"acao": "recusar", "motivo": "engano"}).status_code, 404)
+        ativa.refresh_from_db()
+        self.assertEqual((ativa.situacao, ativa.ativa, ativa.envio_automatico), ("ativa", True, True))
