@@ -13,7 +13,8 @@
   </ol>
 {% endif %}
 {% if pedido.situacao == "devolvido" %}
-  <div class="msg warning" role="status"><div>O escritório devolveu o pedido para você corrigir. Leia a mensagem abaixo e <a href="{% url 'portal:pedido_corrigir' pedido.pk %}">corrija as respostas</a> ou responda.</div></div>
+  <div class="msg warning" role="status"><div>O escritório devolveu o pedido para você corrigir. Leia a mensagem na conversa e corrija as respostas, ou só responda.</div></div>
+  <a class="btn primario grande" href="{% url 'portal:pedido_corrigir' pedido.pk %}" style="width:100%;margin-bottom:14px">Corrigir as respostas</a>
 {% elif pedido.situacao == "aprovado" %}
   <div class="msg success" role="status"><div>O escritório aprovou. Quando o governo (eSocial) confirmar, o pedido fica concluído.</div></div>
 {% endif %}
