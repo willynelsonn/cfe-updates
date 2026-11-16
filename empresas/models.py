@@ -1,3 +1,6 @@
+import hashlib
+import secrets
+from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -5,6 +8,7 @@ from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 from .cripto import cifrar, decifrar
 from .validators import cnpj_valido, formatar_cnpj, normalizar_cnpj, so_digitos
@@ -113,6 +117,15 @@ class Empresa(models.Model):
     ativa = models.BooleanField(default=True)
     criada_em = models.DateTimeField(auto_now_add=True)
 
+    # Cadastro aberto: a dona cadastra, o escritório confere e libera.
+    SITUACAO = [("em_analise", "Em análise"), ("ativa", "Ativa"), ("recusada", "Recusada")]
+    situacao = models.CharField("situação", max_length=10, choices=SITUACAO, default="ativa")
+    motivo_recusa = models.TextField("motivo da recusa", blank=True)
+    validada_em = models.DateTimeField(null=True, blank=True, editable=False)
+    validada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, editable=False, related_name="+"
+    )
+
     class Meta:
         ordering = ["razao_social"]
         verbose_name = "empresa"
@@ -189,6 +202,53 @@ class Empresa(models.Model):
     @property
     def cod_lotacao_padrao(self):
         return "LOT01"
+
+
+class Acesso(models.Model):
+    """Vínculo da dona (usuário que não é do escritório) com a empresa que ela pode ver no portal."""
+
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="acessos")
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="acessos")
+    termos_versao = models.CharField("versão dos termos aceitos", max_length=20)
+    termos_aceitos_em = models.DateTimeField(default=timezone.now)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("usuario", "empresa")]
+
+    def __str__(self):
+        return f"{self.usuario} → {self.empresa}"
+
+
+class Convite(models.Model):
+    """Link de uso único (7 dias) para a dona de uma empresa já cadastrada criar a conta."""
+
+    VALIDADE = timedelta(days=7)
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="convites")
+    codigo_hash = models.CharField(max_length=64, unique=True)
+    criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    criado_em = models.DateTimeField(default=timezone.now)
+    usado_em = models.DateTimeField(null=True, blank=True)
+    usado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    @staticmethod
+    def _hash(codigo: str) -> str:
+        return hashlib.sha256(codigo.encode()).hexdigest()
+
+    @classmethod
+    def criar(cls, empresa, por):
+        """Devolve (convite, código em claro). O código só existe nesta resposta; o banco guarda o hash."""
+        codigo = secrets.token_urlsafe(32)
+        return cls.objects.create(empresa=empresa, criado_por=por, codigo_hash=cls._hash(codigo)), codigo
+
+    @classmethod
+    def pelo_codigo(cls, codigo: str):
+        return cls.objects.filter(
+            codigo_hash=cls._hash(codigo or ""), usado_em__isnull=True, criado_em__gt=timezone.now() - cls.VALIDADE
+        ).select_related("empresa").first()
 
 
 class Preferencia(models.Model):

@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "pessoal",
     "folha",
     "esocial",
+    "portal",
 ]
 
 MIDDLEWARE = [
