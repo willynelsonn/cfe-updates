@@ -14,6 +14,7 @@ from empresas.acesso import eh_escritorio
 from empresas.models import Acesso, Convite, Empresa
 from empresas.validators import formatar_cnpj
 
+from .avisos import cadastro_novo
 from .forms import TERMOS_VERSAO, CadastroForm, ConviteForm
 
 
@@ -53,6 +54,7 @@ def _criar_cadastro(d: dict, cnpj: dict) -> User:
         )
         Acesso.objects.create(usuario=usuario, empresa=empresa, termos_versao=TERMOS_VERSAO,
                               cpf=d["cpf"], celular=d["celular"].strip())
+        cadastro_novo(empresa)
     return usuario
 
 

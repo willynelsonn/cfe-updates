@@ -1,11 +1,16 @@
+import logging
 from urllib.parse import quote
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
+from django.core.mail import send_mail
+from django.core.validators import validate_email
 from django.db import transaction
+from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -17,6 +22,8 @@ from folha.models import criar_rubricas_padrao
 from .acesso import eh_escritorio
 from .forms import CertificadoForm, EmpresaForm, ValidarEmpresaForm
 from .models import Convite, Empresa
+
+logger = logging.getLogger(__name__)
 
 
 class EmpresaListView(LoginRequiredMixin, ListView):
@@ -115,5 +122,33 @@ def convidar(request, pk):
     link = request.build_absolute_uri(reverse("portal:convite", args=[codigo]))
     texto = f"Olá! Este é o seu link para entrar no portal da {empresa.razao_social} (vale por 7 dias): {link}"
     return render(request, "empresas/convite_link.html", {
-        "empresa": empresa, "link": link, "whatsapp": "https://wa.me/?text=" + quote(texto),
+        "empresa": empresa, "link": link, "whatsapp": "https://wa.me/?text=" + quote(texto), "codigo": codigo,
     })
+
+
+@login_required
+@user_passes_test(eh_escritorio)
+@require_POST
+def convite_email(request, pk):
+    """Manda por e-mail o link gerado em `convidar`; o código volta no POST e precisa ser desta empresa e estar valendo."""
+    empresa = get_object_or_404(Empresa, pk=pk)
+    codigo = request.POST.get("codigo", "")
+    convite = Convite.pelo_codigo(codigo)
+    if convite is None or convite.empresa_id != empresa.pk:
+        raise Http404
+    email = request.POST.get("email", "").strip()
+    try:
+        validate_email(email)
+    except ValidationError:
+        return HttpResponseBadRequest("E-mail inválido.")
+    link = request.build_absolute_uri(reverse("portal:convite", args=[codigo]))
+    try:
+        send_mail(f"Convite para o portal da {empresa.razao_social}",
+                  f"Olá!\n\nEste é o seu link para entrar no portal da {empresa.razao_social}. "
+                  f"Ele vale por 7 dias e funciona uma vez só:\n\n{link}\n", None, [email])
+    except Exception:
+        logger.exception("Convite por e-mail não saiu (empresa %s)", empresa.pk)
+        messages.error(request, "Não deu para mandar o e-mail agora. Gere outro convite e mande pelo WhatsApp.")
+        return redirect("empresas:lista")
+    messages.success(request, f"Convite mandado para {email}.")
+    return redirect("empresas:lista")

@@ -79,3 +79,11 @@ def estatico(caminho):
     if arquivo and os.path.exists(arquivo):
         url += f"?v={int(os.path.getmtime(arquivo))}"
     return url
+
+
+@register.inclusion_tag("_ajuda.html")
+def ajuda(nome_do_campo):
+    """Botão "O que é?" do dicionário de termos (portal.ajuda), quando o campo tem palavra técnica."""
+    from portal.ajuda import termo_do_campo
+
+    return {"t": termo_do_campo(nome_do_campo)}

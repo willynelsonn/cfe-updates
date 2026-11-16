@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Programar férias{% endblock %}
 {% block content %}
 <div class="topo"><h1>Programar férias</h1></div>
@@ -18,6 +19,7 @@
         <label for="{{ campo.id_for_label }}">{{ campo.label|capfirst }}{% if campo.field.required %} *{% endif %}</label>
         {{ campo }}
         {% if campo.help_text %}<div class="ajuda">{{ campo.help_text }}</div>{% endif %}
+        {% ajuda campo.name %}
         {% for e in campo.errors %}<div class="erro">{{ e }}</div>{% endfor %}
       </div>
     {% endfor %}

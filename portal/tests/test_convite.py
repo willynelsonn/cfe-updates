@@ -83,3 +83,38 @@ class ConviteTests(TestCase):
     def test_lista_tem_botao_convidar(self):
         self.client.force_login(self.staff)
         self.assertContains(self.client.get("/empresas/"), f'action="/empresas/{self.b.pk}/convidar/"')
+
+    def test_convite_por_email(self):
+        from django.core import mail
+
+        _, codigo = Convite.criar(self.b, self.staff)
+        url = f"/empresas/{self.b.pk}/convite/email/"
+        self.client.force_login(dona(self.a))
+        self.assertEqual(self.client.post(url, {"codigo": codigo, "email": "dona.b@exemplo.com"}).status_code, 403)
+        self.client.force_login(self.staff)
+        self.assertEqual(self.client.post(f"/empresas/{self.a.pk}/convite/email/",
+                                          {"codigo": codigo, "email": "dona.b@exemplo.com"}).status_code, 404)
+        self.assertEqual(self.client.post(url, {"codigo": codigo, "email": "não é e-mail"}).status_code, 400)
+        self.assertEqual(mail.outbox, [])
+        r = self.client.post(url, {"codigo": codigo, "email": "dona.b@exemplo.com"})
+        self.assertRedirects(r, "/empresas/", fetch_redirect_response=False)
+        [m] = mail.outbox
+        self.assertEqual(m.to, ["dona.b@exemplo.com"])
+        self.assertIn(f"/convite/{codigo}/", m.body)
+        Convite.objects.update(usado_em=timezone.now())
+        self.assertEqual(self.client.post(url, {"codigo": codigo, "email": "dona.b@exemplo.com"}).status_code, 404)
+
+    def test_tela_do_convite_oferece_mandar_por_email(self):
+        self.client.force_login(self.staff)
+        self.assertContains(self.client.post(f"/empresas/{self.b.pk}/convidar/"),
+                            f'action="/empresas/{self.b.pk}/convite/email/"')
+
+    def test_convite_por_email_com_smtp_fora_do_ar(self):
+        from unittest import mock
+
+        _, codigo = Convite.criar(self.b, self.staff)
+        self.client.force_login(self.staff)
+        with mock.patch("empresas.views.send_mail", side_effect=OSError("smtp fora")):
+            r = self.client.post(f"/empresas/{self.b.pk}/convite/email/", {"codigo": codigo, "email": "dona.b@exemplo.com"},
+                                 follow=True)
+        self.assertContains(r, "Não deu para mandar o e-mail")
