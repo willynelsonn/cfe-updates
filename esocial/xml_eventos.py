@@ -24,6 +24,8 @@ EVENTOS = {
     "S-1010": ("evtTabRubrica", 1),
     "S-1020": ("evtTabLotacao", 1),
     "S-2200": ("evtAdmissao", 2),
+    "S-2205": ("evtAltCadastral", 2),
+    "S-2206": ("evtAltContratual", 2),
     "S-2230": ("evtAfastTemp", 2),
     "S-2299": ("evtDeslig", 2),
     "S-1200": ("evtRemun", 3),
@@ -75,10 +77,12 @@ def _raiz(tipo: str, empresa):
     return id_evento, root, evt
 
 
-def _ide_evento(evt, empresa, *, retif=None, apuracao=None, per_apur=None, tabela=False):
+def _ide_evento(evt, empresa, *, retif=None, recibo="", apuracao=None, per_apur=None, tabela=False):
+    """Com ``recibo`` o evento retifica o que já foi aceito com esse recibo (indRetif = 2)."""
     ide = sub(evt, "ideEvento")
     if retif is not None:
-        sub(ide, "indRetif", 1)
+        sub(ide, "indRetif", 2 if recibo else 1)
+        opt(ide, "nrRecibo", recibo)
     if apuracao is not None:
         sub(ide, "indApuracao", apuracao)
     if per_apur is not None:
@@ -197,16 +201,80 @@ def s2200(funcionario):
 
     trab = sub(evt, "trabalhador")
     sub(trab, "cpfTrab", f.cpf)
-    sub(trab, "nmTrab", f.nome)
-    sub(trab, "sexo", f.sexo)
-    sub(trab, "racaCor", f.raca_cor)
-    opt(trab, "estCiv", f.estado_civil)
-    sub(trab, "grauInstr", f.grau_instrucao)
-    opt(trab, "nmSoc", f.nome_social)
+    _pessoa(trab, f)
     nasc = sub(trab, "nascimento")
     sub(nasc, "dtNascto", f.data_nascimento)
     sub(nasc, "paisNascto", "105")
     sub(nasc, "paisNac", "105")
+    _endereco_dependentes_contato(trab, f)
+
+    vinc = sub(evt, "vinculo")
+    sub(vinc, "matricula", f.matricula)
+    sub(vinc, "tpRegTrab", 1)  # CLT
+    sub(vinc, "tpRegPrev", 1)  # RGPS
+    sub(vinc, "cadIni", "N")
+    regime = sub(vinc, "infoRegimeTrab")
+    clt = sub(regime, "infoCeletista")
+    sub(clt, "dtAdm", f.data_admissao)
+    sub(clt, "tpAdmissao", 1)  # admissão
+    sub(clt, "indAdmissao", 1)  # normal
+    sub(clt, "tpRegJor", 1)  # submetido a horário de trabalho
+    sub(clt, "natAtividade", 1)  # urbano
+    sub(clt, "cnpjSindCategProf", empresa.cnpj_sindicato or "")
+    fgts = sub(clt, "FGTS")
+    sub(fgts, "dtOpcFGTS", f.data_admissao)
+    _info_contrato(vinc, f)
+    return id_evento, root
+
+
+def s2205(funcionario, data, recibo=""):
+    """Alteração de dados cadastrais: manda o retrato atual dos dados pessoais, endereço, dependentes e contato."""
+    f = funcionario
+    id_evento, root, evt = _raiz("S-2205", f.empresa)
+    _ide_evento(evt, f.empresa, retif=1, recibo=recibo)
+    _ide_empregador(evt, f.empresa)
+    sub(sub(evt, "ideTrabalhador"), "cpfTrab", f.cpf)
+    alt = sub(evt, "alteracao")
+    sub(alt, "dtAlteracao", data)
+    dados = sub(alt, "dadosTrabalhador")
+    _pessoa(dados, f)
+    sub(dados, "paisNac", "105")
+    _endereco_dependentes_contato(dados, f)
+    return id_evento, root
+
+
+def s2206(funcionario, data, recibo=""):
+    """Alteração contratual: manda o retrato atual do contrato (cargo, salário, duração, jornada)."""
+    f = funcionario
+    empresa = f.empresa
+    id_evento, root, evt = _raiz("S-2206", empresa)
+    _ide_evento(evt, empresa, retif=1, recibo=recibo)
+    _ide_empregador(evt, empresa)
+    ide = sub(evt, "ideVinculo")
+    sub(ide, "cpfTrab", f.cpf)
+    sub(ide, "matricula", f.matricula)
+    alt = sub(evt, "altContratual")
+    sub(alt, "dtAlteracao", data)
+    vinc = sub(alt, "vinculo")
+    sub(vinc, "tpRegPrev", 1)  # RGPS
+    clt = sub(sub(vinc, "infoRegimeTrab"), "infoCeletista")
+    sub(clt, "tpRegJor", 1)
+    sub(clt, "natAtividade", 1)
+    sub(clt, "cnpjSindCategProf", empresa.cnpj_sindicato or "")
+    _info_contrato(vinc, f)
+    return id_evento, root
+
+
+def _pessoa(parent, f):
+    sub(parent, "nmTrab", f.nome)
+    sub(parent, "sexo", f.sexo)
+    sub(parent, "racaCor", f.raca_cor)
+    opt(parent, "estCiv", f.estado_civil)
+    sub(parent, "grauInstr", f.grau_instrucao)
+    opt(parent, "nmSoc", f.nome_social)
+
+
+def _endereco_dependentes_contato(trab, f):
     end = sub(trab, "endereco")
     br = sub(end, "brasil")
     sub(br, "dscLograd", f.logradouro)
@@ -232,22 +300,16 @@ def s2200(funcionario):
             sub(cont, "fonePrinc", f.telefone)
         opt(cont, "emailPrinc", f.email)
 
-    vinc = sub(evt, "vinculo")
-    sub(vinc, "matricula", f.matricula)
-    sub(vinc, "tpRegTrab", 1)  # CLT
-    sub(vinc, "tpRegPrev", 1)  # RGPS
-    sub(vinc, "cadIni", "N")
-    regime = sub(vinc, "infoRegimeTrab")
-    clt = sub(regime, "infoCeletista")
-    sub(clt, "dtAdm", f.data_admissao)
-    sub(clt, "tpAdmissao", 1)  # admissão
-    sub(clt, "indAdmissao", 1)  # normal
-    sub(clt, "tpRegJor", 1)  # submetido a horário de trabalho
-    sub(clt, "natAtividade", 1)  # urbano
-    sub(clt, "cnpjSindCategProf", empresa.cnpj_sindicato or "")
-    fgts = sub(clt, "FGTS")
-    sub(fgts, "dtOpcFGTS", f.data_admissao)
 
+def _tmp_parc(f) -> int:
+    """0 = tempo integral; 1 = doméstico até 25 h (só categoria 104); 2 = demais até 30 h (CLT art. 58-A)."""
+    if f.categoria == "104":
+        return 1 if f.horas_semanais <= 25 else 0
+    return 2 if f.horas_semanais <= 30 else 0
+
+
+def _info_contrato(vinc, f):
+    empresa = f.empresa
     contrato = sub(vinc, "infoContrato")
     sub(contrato, "nmCargo", f.cargo.nome)
     sub(contrato, "CBOCargo", f.cargo.cbo)
@@ -266,9 +328,8 @@ def s2200(funcionario):
     hor = sub(contrato, "horContratual")
     sub(hor, "qtdHrsSem", f"{f.horas_semanais:.2f}")
     sub(hor, "tpJornada", f.tipo_jornada)
-    sub(hor, "tmpParc", 0 if f.horas_semanais > 30 else 1)
+    sub(hor, "tmpParc", _tmp_parc(f))
     sub(hor, "dscJorn", f.descricao_jornada)
-    return id_evento, root
 
 
 def s2299(funcionario, rescisao=None):

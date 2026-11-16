@@ -10,6 +10,7 @@ from django.urls import reverse
 from openpyxl import load_workbook
 
 from esocial.models import Evento
+from esocial.servico import gerar_admissao
 from folha.tests import fabrica
 from pessoal.models import Funcionario
 
@@ -143,3 +144,48 @@ class PlanilhaFuncionariosTest(TestCase):
         for url in (reverse("pessoal:exportar"), self.url, reverse("pessoal:lista")):
             self.assertRedirects(self.client.get(url), "/cliente/", fetch_redirect_response=False)
         self.assertEqual(self.enviar(csv_arquivo(CABECALHO, NOVA)).status_code, 403)
+
+
+class EdicaoVaiAoESocialTest(TestCase):
+    """Salvar a edição manda ao eSocial o que mudou: S-2205 (dados pessoais) ou S-2206 (contrato)."""
+
+    def setUp(self):
+        self.emp = fabrica.empresa()
+        self.func = fabrica.funcionario(self.emp)
+        Evento.objects.filter(pk=gerar_admissao(self.func).pk).update(status="aceito")
+        self.client.force_login(get_user_model().objects.create_user("escritorio", password="x", is_staff=True))
+        sessao = self.client.session
+        sessao["empresa_id"] = self.emp.pk
+        sessao.save()
+        self.url = f"/funcionarios/{self.func.pk}/editar/"
+
+    def dados(self, **mudar):
+        form = self.client.get(self.url).context["form"]
+        return {**{n: v for n in form.fields if (v := form[n].value()) is not None}, **mudar}
+
+    def test_salario_vai_como_s2206_na_data_da_mudanca(self):
+        r = self.client.post(self.url, self.dados(salario="3300.00", alteracao_em="2026-11-01"))
+        self.assertEqual(r.status_code, 302)
+        ev = Evento.objects.get(tipo="S-2206")
+        self.assertEqual(ev.chave, f"S-2206:func:{self.func.pk}:2026-11-01")
+        self.assertIn("<vrSalFx>3300.00</vrSalFx>", ev.xml)
+
+    def test_endereco_vai_como_s2205(self):
+        self.client.post(self.url, self.dados(logradouro="Rua Nova"))
+        self.assertEqual(list(Evento.objects.filter(tipo__in=["S-2205", "S-2206"]).values_list("tipo", flat=True)),
+                         ["S-2205"])
+
+    def test_pix_nao_vai_ao_esocial(self):
+        self.client.post(self.url, self.dados(chave_pix="pix-inventado"))
+        self.assertFalse(Evento.objects.filter(tipo__in=["S-2205", "S-2206"]).exists())
+
+    def test_sem_envio_automatico_nada_vai(self):
+        self.emp.envio_automatico = False
+        self.emp.save()
+        self.client.post(self.url, self.dados(salario="3300.00"))
+        self.assertFalse(Evento.objects.filter(tipo="S-2206").exists())
+
+    def test_data_da_mudanca_antes_da_admissao(self):
+        r = self.client.post(self.url, self.dados(salario="3300.00", alteracao_em="2025-02-28"))
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("alteracao_em", r.context["form"].errors)

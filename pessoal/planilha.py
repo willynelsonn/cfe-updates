@@ -210,7 +210,7 @@ def analisar(conteudo: bytes, nome_arquivo: str, empresa, ja_no_esocial=False):
             linha.form = form
             if func.pk and not form.has_changed():
                 linha.acao = "igual"
-            linha.mudancas = [CABECALHOS[c] for c in form.changed_data] if func.pk else []
+            linha.mudancas = [CABECALHOS[c] for c in form.changed_data if c in CABECALHOS] if func.pk else []
         else:
             linha.erros += [
                 f"{CABECALHOS.get(c, 'Linha')}: {' '.join(msgs)}" for c, msgs in form.errors.items() if c not in com_erro

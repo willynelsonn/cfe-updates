@@ -38,6 +38,8 @@ class Pedido(models.Model):
     funcionario = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, null=True, blank=True, related_name="pedidos")
     ferias = models.ForeignKey(Ferias, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     rescisao = models.ForeignKey(Rescisao, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    eventos_esocial = models.JSONField(default=list, blank=True,
+                                       help_text="Chaves dos eventos do eSocial que concluem o pedido (alterar dados).")
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -70,6 +72,10 @@ class Pedido(models.Model):
     def evento_aceito(self) -> bool:
         from esocial.models import Evento
 
+        if self.tipo == "alterar":  # vale o último evento de cada chave (retificação ou "gerar de novo")
+            ultimo = dict(Evento.objects.filter(empresa_id=self.empresa_id, chave__in=self.eventos_esocial)
+                          .order_by("criado_em", "pk").values_list("chave", "status"))
+            return bool(self.eventos_esocial) and all(ultimo.get(c) == "aceito" for c in self.eventos_esocial)
         filtro = {
             "contratei": ("S-2200", "funcionario", self.funcionario_id),
             "sair": ("S-2299", "funcionario", self.funcionario_id),

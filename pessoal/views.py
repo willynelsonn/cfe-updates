@@ -4,16 +4,18 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import IntegrityError
+from django.forms.models import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.utils.text import slugify
 from django.views import View
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from empresas.mixins import EmpresaRequiredMixin
-from esocial.servico import ErroESocial, gerar_admissao, gerar_desligamento, tentar_processar
+from esocial.servico import ErroESocial, gerar_admissao, gerar_alteracoes, gerar_desligamento, tentar_processar
 from portal.aprovacao import PedidoMixin
 
 from . import planilha
@@ -112,8 +114,24 @@ class FuncionarioUpdateView(EmpresaRequiredMixin, PedidoMixin, FuncionarioFormMi
     tipo_pedido = "alterar"
 
     def form_valid(self, form):
+        antes = model_to_dict(Funcionario.objects.get(pk=self.object.pk))
         resp = super().form_valid(form)
-        self.aprovar_pedido()
+        mudou = {campo for campo, valor in model_to_dict(self.object).items() if antes.get(campo) != valor}
+        eventos = []
+        if self.empresa.envio_automatico and mudou:
+            data = form.cleaned_data.get("alteracao_em") or timezone.localdate()
+            try:
+                eventos = gerar_alteracoes(self.object, mudou, data)
+            except ErroESocial as exc:
+                messages.warning(self.request, f"Alterações salvas, mas não foram ao eSocial: {exc}")
+            for ev in eventos:
+                if ev.status == "erro":
+                    messages.warning(self.request, f"{ev.tipo} ficou com problema: {ev.mensagens[0]}")
+                else:
+                    messages.success(self.request, f"{ev.descricao}: {ev.tipo} na fila do eSocial.")
+            if eventos and (problema := tentar_processar(self.empresa)):
+                messages.warning(self.request, problema)
+        self.aprovar_pedido(eventos)
         return resp
 
 

@@ -51,6 +51,7 @@ def iniciais(pedido) -> dict:
                                                                                      timezone.localdate())
     else:  # alterar: endereço, função e banco/Pix não têm campo único; ficam no resumo ao lado
         d = {c: r.get(c) for c in ("cep", "telefone", "salario")}
+        d["alteracao_em"] = r.get("a_partir_de")
     return {k: v for k, v in d.items() if v not in (None, "")}
 
 
@@ -58,13 +59,16 @@ def contexto(pedido) -> dict:
     return {"pedido": pedido, "resumo_pedido": resumo(pedido)} if pedido else {}
 
 
-def aprovar(request, pedido, **vinculo) -> None:
+def aprovar(request, pedido, eventos=None, **vinculo) -> None:
+    """``eventos``: o que a edição mandou ao eSocial (pedido "alterar"); sem eles o pedido já conclui."""
     for campo, valor in vinculo.items():
         setattr(pedido, campo, valor)
-    alterar = pedido.tipo == "alterar"  # S-2205/S-2206 ainda não existem: nada a esperar do eSocial
-    pedido.situacao = "concluido" if alterar else "aprovado"
+    if pedido.tipo == "alterar":
+        pedido.eventos_esocial = [e.chave for e in eventos or ()]
+    concluido = pedido.tipo == "alterar" and not pedido.eventos_esocial  # ex.: só banco ou Pix
+    pedido.situacao = "concluido" if concluido else "aprovado"
     pedido.save()
-    Mensagem.objects.create(pedido=pedido, texto="O escritório aprovou e atualizou o cadastro." if alterar else
+    Mensagem.objects.create(pedido=pedido, texto="O escritório aprovou e atualizou o cadastro." if concluido else
                             "O escritório aprovou. Quando o eSocial aceitar, o pedido fica concluído.")
     messages.success(request, f"Pedido nº {pedido.pk} da cliente aprovado.")
 
@@ -85,6 +89,6 @@ class PedidoMixin:
     def get_context_data(self, **kwargs):
         return {**super().get_context_data(**kwargs), **contexto(self.pedido)}
 
-    def aprovar_pedido(self):
+    def aprovar_pedido(self, eventos=None):
         if self.pedido:
-            aprovar(self.request, self.pedido, funcionario=self.object)
+            aprovar(self.request, self.pedido, eventos, funcionario=self.object)

@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from empresas.validators import formatar_cpf, so_digitos, validar_cpf
+from folha.custo import custo_mensal
 from folha.templatetags.ui import moeda
 from pessoal.models import Funcionario
 
@@ -21,7 +22,7 @@ def _data(rotulo, **kw):
     return forms.DateField(label=rotulo, widget=DATA, **kw)
 
 
-def _dinheiro(rotulo, **kw):
+def dinheiro(rotulo, **kw):
     return forms.DecimalField(label=rotulo, max_digits=12, decimal_places=2, min_value=0, localize=True,
                               widget=forms.TextInput(attrs={"inputmode": "decimal"}), **kw)
 
@@ -75,7 +76,7 @@ class ContrateiForm(PedidoForm):
     telefone = forms.CharField(label="Celular da pessoa", max_length=20, required=False)
     email = forms.EmailField(label="E-mail da pessoa", required=False)
     cep = forms.CharField(label="CEP de onde a pessoa mora", max_length=9)
-    salario = _dinheiro("Salário por mês (R$)")
+    salario = dinheiro("Salário por mês (R$)")
     horario = forms.CharField(label="Dias e horário de trabalho", max_length=100,
                               help_text="Ex.: segunda a sexta, das 8h às 17h, com 1 hora de almoço.")
     vale_transporte = forms.BooleanField(label="Vai usar vale-transporte", required=False)
@@ -134,7 +135,7 @@ class AlterarForm(PedidoForm):
     cep = forms.CharField(label="Novo CEP", max_length=9, required=False)
     endereco = forms.CharField(label="Novo endereço (rua, número e bairro)", max_length=150, required=False)
     telefone = forms.CharField(label="Novo celular", max_length=20, required=False)
-    salario = _dinheiro("Novo salário por mês (R$)", required=False)
+    salario = dinheiro("Novo salário por mês (R$)", required=False)
     cargo = forms.CharField(label="Nova função (o que a pessoa passa a fazer)", max_length=100, required=False)
     banco_pix = forms.CharField(label="Novo banco ou chave Pix para o salário", max_length=100, required=False)
     a_partir_de = _data("A partir de quando", required=False)
@@ -200,4 +201,7 @@ def resumo(pedido) -> list[tuple[str, str]]:
         elif nome == "cpf":
             v = formatar_cpf(v)
         linhas.append((campo.label, str(v)))
+    if pedido.tipo == "contratei" and pedido.respostas.get("salario"):
+        total = custo_mensal(pedido.empresa, Decimal(pedido.respostas["salario"])).total
+        linhas.append(("Custo estimado por mês para a empresa", f"{moeda(total)} (estimativa)"))
     return linhas

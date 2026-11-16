@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 
 from esocial.models import Evento
+from esocial.servico import gerar_admissao
 from folha.models import Ferias, Rescisao
 from folha.tests.fabrica import funcionario
 from pessoal.models import Funcionario
@@ -107,6 +108,24 @@ class AprovacaoTests(TestCase):
         Evento.objects.create(empresa=self.a, tipo="S-2200", descricao="Admissão", id_evento="ID1", xml="<x/>",
                               funcionario=self.maria, status="aceito")
         self.client.force_login(self.dona)
+        self.assertContains(self.client.get("/cliente/pedidos/"), "Concluído")
+        p.refresh_from_db()
+        self.assertEqual(p.situacao, "concluido")
+
+    def test_alterar_salario_fica_aprovado_ate_o_esocial_aceitar(self):
+        Evento.objects.filter(pk=gerar_admissao(self.maria).pk).update(status="aceito")
+        p = self.pedido(tipo="alterar", funcionario=self.maria,
+                        respostas={"salario": "3300.00", "a_partir_de": "2026-11-01"})
+        url = f"/funcionarios/{self.maria.pk}/editar/?pedido={p.pk}"
+        r = self.client.get(url)
+        self.assertContains(r, 'value="2026-11-01"')  # a data da mudança vem do pedido
+        self.assertEqual(self.client.post(url, self.dados_do_formulario(r)).status_code, 302)
+        p.refresh_from_db()
+        chave = f"S-2206:func:{self.maria.pk}:2026-11-01"
+        self.assertEqual((p.situacao, p.eventos_esocial), ("aprovado", [chave]))
+        self.client.force_login(self.dona)
+        self.assertNotContains(self.client.get("/cliente/pedidos/"), "Concluído")
+        Evento.objects.filter(chave=chave).update(status="aceito")
         self.assertContains(self.client.get("/cliente/pedidos/"), "Concluído")
         p.refresh_from_db()
         self.assertEqual(p.situacao, "concluido")

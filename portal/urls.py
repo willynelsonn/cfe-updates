@@ -7,6 +7,7 @@ app_name = "portal"
 urlpatterns = [
     path("cliente/", views.inicio, name="inicio"),
     path("cliente/pedidos/", pedidos.lista, name="pedidos"),
+    path("cliente/pedidos/custo/", pedidos.custo, name="pedido_custo"),
     path("cliente/pedidos/novo/", pedidos.novo, name="pedido_novo"),
     path("cliente/pedidos/novo/<slug:tipo>/", pedidos.criar, name="pedido_criar"),
     path("cliente/pedidos/<int:pk>/", pedidos.pedido, name="pedido"),
