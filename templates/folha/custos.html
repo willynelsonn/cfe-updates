@@ -28,22 +28,9 @@
     </table>
   </section>
 
-  <section class="card" id="simulador">
-    <div class="card-cab"><div><h2>{% icone "calculadora" %} Quanto custa contratar?</h2><span class="dica">Simulação com a tributação desta empresa</span></div></div>
-    <form method="get" action="#simulador">
-      <div class="form-grid" style="grid-template-columns:1fr 1fr">
-        <div class="campo"><label for="sal">Salário (R$)</label><input id="sal" name="salario" inputmode="decimal" placeholder="2.500,00" value="{{ request.GET.salario }}" required></div>
-        <div class="campo"><label for="vt">Vale-transporte (R$/mês)</label><input id="vt" name="vt" inputmode="decimal" placeholder="0" value="{{ request.GET.vt }}"></div>
-        <div class="campo"><label for="ben">Outros benefícios (R$/mês)</label><input id="ben" name="beneficios" inputmode="decimal" placeholder="0" value="{{ request.GET.beneficios }}"></div>
-        <div class="campo"><label style="margin-top:28px"><input type="checkbox" name="periculosidade" {% if request.GET.periculosidade %}checked{% endif %}> Periculosidade (30%)</label></div>
-      </div>
-      <p style="margin-top:12px"><button class="btn primario">Calcular custo</button></p>
-    </form>
-    {% if simulacao %}
-      <div class="kpi" style="box-shadow:none;margin:6px 0 12px;background:var(--surface-2)"><div class="rotulo">Custo mensal estimado</div><div class="valor">{{ simulacao.total|moeda }}</div>
-        <div class="rodape">{{ simulacao.anual|compacto }} por ano · {{ simulacao.multiplicador|numero }}× o salário</div></div>
-      {% with custo=simulacao %}{% include "folha/_custo_detalhe.html" %}{% endwith %}
-    {% endif %}
+  <section class="card">
+    <div class="card-cab"><div><h2>{% icone "calculadora" %} Quanto custa contratar?</h2><span class="dica">Simule um salário novo com a tributação desta empresa: custo por mês, por ano e quanto a pessoa recebe.</span></div></div>
+    <p><a class="btn primario" href="{% url 'folha:simulador' %}">Abrir o simulador</a></p>
   </section>
 </div>
 {% if partes_encargos %}

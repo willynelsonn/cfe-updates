@@ -31,6 +31,7 @@ urlpatterns = [
     path("rescisoes/<int:pk>/trct/", views.rescisao_trct, name="rescisao_trct"),
     path("rescisoes/<int:pk>/cancelar/", views.rescisao_cancelar, name="rescisao_cancelar"),
     path("custos/", views.custos, name="custos"),
+    path("simulador/", views.simulador, name="simulador"),
     path("relatorios/", views.relatorios, name="relatorios"),
     path("relatorios/<slug:slug>/", views.relatorio, name="relatorio"),
     path("rubricas/", views.RubricaListView.as_view(), name="rubricas"),

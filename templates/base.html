@@ -38,6 +38,7 @@
           <button type="button" aria-expanded="false" aria-controls="menu-mais" data-alternar="menu-mais">Mais {% icone "seta" "sm" %}</button>
           <div class="menu-mais" id="menu-mais" role="menu">
             <a href="{% url 'folha:custos' %}" class="{% if nome == 'custos' %}ativo{% endif %}">{% icone "custo" %} Custos da equipe</a>
+            <a href="{% url 'folha:simulador' %}" class="{% if nome == 'simulador' %}ativo{% endif %}">{% icone "calculadora" %} Simulador de contratação</a>
             <a href="{% url 'folha:decimo_terceiro' %}" class="{% if nome == 'decimo_terceiro' %}ativo{% endif %}">{% icone "presente" %} 13º salário</a>
             <a href="{% url 'esocial:guia' %}" class="{% if nome == 'guia' %}ativo{% endif %}">{% icone "recibo" %} DCTFWeb e FGTS</a>
             <a href="{% url 'pessoal:cargos' %}" class="{% if nome == 'cargos' %}ativo{% endif %}">{% icone "maleta" %} Cargos</a>
@@ -102,6 +103,7 @@
     <div class="sec">Pessoas e custos</div>
     <a href="{% url 'pessoal:lista' %}">{% icone "pessoas" %} Funcionários</a>
     <a href="{% url 'folha:custos' %}">{% icone "custo" %} Custos da equipe</a>
+    <a href="{% url 'folha:simulador' %}">{% icone "calculadora" %} Simulador de contratação</a>
     <a href="{% url 'folha:relatorios' %}">{% icone "lista" %} Relatórios</a>
     <a href="{% url 'pessoal:cargos' %}">{% icone "maleta" %} Cargos</a>
     <div class="sec">Governo e configurações</div>

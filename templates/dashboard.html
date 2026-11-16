@@ -36,7 +36,7 @@
       {% endif %}
       <a class="btn" href="{% url 'pessoal:novo' %}" title="Cadastra e já envia a admissão ao eSocial">{% icone "mais" "sm" %} Admitir</a>
       <a class="btn" href="{% url 'folha:ferias_nova' %}" title="Confere a CLT, calcula e envia o aviso">{% icone "ferias" "sm" %} Férias</a>
-      <a class="btn" href="{% url 'folha:custos' %}#simulador" title="Quanto custa contratar alguém">{% icone "calculadora" "sm" %} Simular</a>
+      <a class="btn" href="{% url 'folha:simulador' %}" title="Quanto custa contratar alguém">{% icone "calculadora" "sm" %} Simular</a>
     </div>
     <div class="mini-stats">
       <div><div class="r">Funcionários ativos</div><div class="v"><span data-contar="inteiro" data-valor="{{ ativos }}">{{ ativos }}</span></div>

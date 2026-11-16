@@ -1,3 +1,4 @@
+from decimal import Decimal
 from datetime import date
 from io import StringIO
 
@@ -17,6 +18,18 @@ class TelasTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user("contador", password="x")
         self.client.force_login(self.user)
+
+    def test_simulador_de_contratacao(self):
+        fabrica.empresa()  # Lucro Presumido: mesma conta do teste de custo (R$ 5.485,00)
+        url = reverse("folha:simulador")
+        resp = self.client.get(url, {"salario": "3.000,00", "vt": "220", "beneficios": "500", "dependentes": "1"})
+        self.assertEqual(resp.context["simulacao"].total, Decimal("5485.00"))
+        liq = resp.context["liquido"]
+        self.assertEqual(liq["vt"], Decimal("180.00"))  # 6% do salário
+        self.assertEqual(liq["liquido"], Decimal("3000") - liq["inss"] - liq["irrf"] - Decimal("180"))
+        self.assertContains(resp, "5.485,00")
+        self.assertIsNone(self.client.get(url, {"salario": "abc"}).context["simulacao"])
+        self.assertIsNone(self.client.get(url).context["simulacao"])
 
     def test_exige_login(self):
         self.client.logout()
