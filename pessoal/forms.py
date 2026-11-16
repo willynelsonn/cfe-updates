@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from django import forms
+from django.utils import timezone
 
 from .models import Cargo, Dependente, Funcionario
 
@@ -17,6 +20,10 @@ class FuncionarioForm(forms.ModelForm):
         self.empresa = empresa
         if empresa is not None:
             self.fields["cargo"].queryset = Cargo.objects.filter(empresa=empresa)
+        if self.instance.pk:  # edição: a data vai no S-2205/S-2206
+            self.fields["alteracao_em"] = forms.DateField(
+                label="A mudança vale a partir de", required=False, widget=DATA, initial=timezone.localdate,
+                help_text="Data que vai ao eSocial se mudar dado pessoal ou do contrato. Em branco: hoje.")
 
     class Meta:
         model = Funcionario
@@ -31,6 +38,14 @@ class FuncionarioForm(forms.ModelForm):
         if qs.exists():
             raise forms.ValidationError("Já existe um funcionário com esta matrícula.")
         return matricula
+
+    def clean_alteracao_em(self):
+        data = self.cleaned_data.get("alteracao_em")
+        if data and data < self.instance.data_admissao:
+            raise forms.ValidationError("A mudança não pode ser antes da admissão.")
+        if data and data > timezone.localdate() + timedelta(days=180):
+            raise forms.ValidationError("O eSocial só aceita mudanças até 180 dias à frente.")
+        return data
 
 
 class DesligamentoForm(forms.ModelForm):
