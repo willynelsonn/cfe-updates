@@ -51,6 +51,16 @@ class Pedido(models.Model):
     def aberto(self):
         return self.situacao in self.ABERTOS
 
+    PASSOS = [("enviado", "Enviado"), ("em_analise", "Em análise"), ("aprovado", "Aprovado"), ("concluido", "Concluído")]
+
+    def linha_do_tempo(self) -> list[tuple[str, str]]:
+        """Passos para a dona: (rótulo, "feito" | "atual" | ""). Devolvido fica no passo "Em análise"."""
+        if self.situacao == "cancelado":
+            return []
+        chaves = [c for c, _ in self.PASSOS]
+        atual = chaves.index("em_analise" if self.situacao == "devolvido" else self.situacao)
+        return [(rotulo, "feito" if i < atual else "atual" if i == atual else "") for i, (_, rotulo) in enumerate(self.PASSOS)]
+
     def mudar(self, situacao: str, por, texto: str = "") -> None:
         self.situacao = situacao
         self.save(update_fields=["situacao", "atualizado_em"])

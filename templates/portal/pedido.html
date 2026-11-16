@@ -1,0 +1,41 @@
+{% extends "portal/base.html" %}
+{% block title %}{{ pedido.get_tipo_display }}{% endblock %}
+{% block conteudo %}
+<p style="margin:8px 0 0"><a href="{% url 'portal:pedidos' %}">← Pedidos</a></p>
+<h1>{{ pedido.get_tipo_display }}</h1>
+<p class="muted" style="margin:0 0 14px">{% if pedido.funcionario %}{{ pedido.funcionario.nome }} · {% endif %}pedido feito em {{ pedido.criado_em|date:"d/m/Y" }}</p>
+
+{% if pedido.situacao == "cancelado" %}
+  <div class="msg error" role="status"><div>Pedido cancelado.</div></div>
+{% else %}
+  <ol class="linha-tempo" aria-label="Andamento do pedido">
+    {% for rotulo, estado in pedido.linha_do_tempo %}<li class="{{ estado }}"{% if estado == "atual" %} aria-current="step"{% endif %}>{{ rotulo }}</li>{% endfor %}
+  </ol>
+{% endif %}
+{% if pedido.situacao == "devolvido" %}
+  <div class="msg warning" role="status"><div>O escritório devolveu o pedido para você corrigir. Leia a mensagem abaixo e <a href="{% url 'portal:pedido_corrigir' pedido.pk %}">corrija as respostas</a> ou responda.</div></div>
+{% elif pedido.situacao == "aprovado" %}
+  <div class="msg success" role="status"><div>O escritório aprovou. Quando o governo (eSocial) confirmar, o pedido fica concluído.</div></div>
+{% endif %}
+
+<section class="card" aria-labelledby="t-respostas">
+  <h2 id="t-respostas" style="margin:0 0 8px;font-size:16px">O que você mandou</h2>
+  <dl class="respostas">{% for rotulo, valor in resumo %}<dt>{{ rotulo }}</dt><dd>{{ valor|linebreaksbr }}</dd>{% empty %}<dd class="muted">Só o arquivo.</dd>{% endfor %}</dl>
+</section>
+
+{% include "portal/_conversa.html" %}
+
+{% if pedido.situacao != "concluido" and pedido.situacao != "cancelado" %}
+<form method="post" enctype="multipart/form-data" class="card" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="msg error" role="alert"><div>{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div></div>{% endif %}
+  <div class="form-grid">{% for campo in form %}{% include "_campo.html" %}{% endfor %}</div>
+  <button class="btn primario" type="submit" style="width:100%;margin-top:14px" data-ocupado="Enviando">{% if pedido.situacao == "devolvido" %}Responder e reenviar{% else %}Enviar mensagem{% endif %}</button>
+</form>
+{% endif %}
+{% if pedido.aberto %}
+<form method="post" action="{% url 'portal:pedido_cancelar' pedido.pk %}" style="text-align:center" onsubmit="return confirm('Cancelar este pedido?')">
+  {% csrf_token %}<button class="btn fantasma pequeno" type="submit">Cancelar pedido</button>
+</form>
+{% endif %}
+{% endblock %}

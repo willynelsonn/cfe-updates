@@ -1,0 +1,15 @@
+{% extends "portal/base.html" %}{% load ui %}
+{% block title %}Pedidos{% endblock %}
+{% block conteudo %}
+<h1>Seus <em>pedidos</em></h1>
+<p class="muted" style="margin:0 0 14px">Tudo o que você pede passa pelo escritório antes de valer.</p>
+<a class="btn primario grande" href="{% url 'portal:pedido_novo' %}" style="width:100%;margin-bottom:18px">{% icone "mais" %} Fazer um pedido</a>
+{% for p in pedidos %}
+  <a class="card pedido-item" href="{% url 'portal:pedido' p.pk %}">
+    <span><strong>{{ p.get_tipo_display }}</strong>{% if p.funcionario %}<br><span class="muted">{{ p.funcionario.nome }}</span>{% endif %}</span>
+    <span style="text-align:right"><span class="tag {{ p.situacao }}">{{ p.get_situacao_display }}</span><br><span class="muted" style="font-size:12px">{{ p.criado_em|date:"d/m/Y" }}</span></span>
+  </a>
+{% empty %}
+  <div class="card vazio">Você ainda não fez nenhum pedido.</div>
+{% endfor %}
+{% endblock %}

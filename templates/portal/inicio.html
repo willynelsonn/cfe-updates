@@ -19,6 +19,7 @@
       <li>Marque os serviços do <strong>eSocial</strong>, escolha a validade e confirme.</li>
     </ol>
   </section>
+  <a class="btn primario grande" href="{% url 'portal:pedido_criar' 'documento' %}" style="width:100%">Mandar documento ao escritório</a>
 
 {% elif empresa.situacao == "recusada" %}
   <h1>Não conseguimos liberar o cadastro</h1>
@@ -26,13 +27,15 @@
     <p style="margin:0 0 8px"><strong>O que o escritório disse:</strong></p>
     <p style="margin:0">{{ empresa.motivo_recusa|linebreaksbr }}</p>
   </div>
-  <p class="muted">Se precisar, fale com o escritório.</p>
+  <p class="muted">Se precisar, <a href="{% url 'portal:pedido_criar' 'duvida' %}">fale com o escritório</a>.</p>
 
 {% else %}
   <h1>Tudo certo, <em>{{ user.first_name|default:"bem-vinda" }}</em></h1>
   <div class="card">
     <p style="margin:0 0 4px"><strong>{{ empresa.razao_social }}</strong></p>
-    <p class="muted" style="margin:0">O escritório já cuida da folha da sua empresa. Em breve, pagamentos, holerites e pedidos aparecem aqui.</p>
+    <p class="muted" style="margin:0">O escritório já cuida da folha da sua empresa. Em breve, pagamentos e holerites aparecem aqui.</p>
   </div>
+  <a class="btn primario grande" href="{% url 'portal:pedido_novo' %}" style="width:100%;margin-bottom:10px">Fazer um pedido</a>
+  <p style="text-align:center;margin:0"><a href="{% url 'portal:pedidos' %}">Ver meus pedidos</a></p>
 {% endif %}
 {% endblock %}

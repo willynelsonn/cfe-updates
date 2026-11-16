@@ -1,0 +1,18 @@
+{% load ui %}<section class="card" aria-labelledby="t-conversa">
+  <h2 id="t-conversa" style="margin:0 0 10px;font-size:16px">Conversa</h2>
+  {% for m in mensagens %}
+    <div class="mensagem{% if not m.autor_id %} aviso{% elif m.autor.is_staff %} escritorio{% endif %}">
+      <div><strong>{% if not m.autor_id %}Aviso{% elif m.autor_id == user.id %}Você{% elif m.autor.is_staff %}Escritório{% else %}{{ m.autor.get_full_name|default:m.autor.username }}{% endif %}</strong>
+      <span class="muted" style="font-size:12px">{{ m.criado_em|date:"d/m/Y H:i" }}</span></div>
+      <div>{{ m.texto|linebreaksbr }}</div>
+    </div>
+  {% empty %}
+    <p class="muted" style="margin:0">Nenhuma mensagem ainda.</p>
+  {% endfor %}
+  {% with anexos=pedido.anexos.all %}{% if anexos %}
+  <h3 style="margin:14px 0 6px;font-size:14px">Arquivos</h3>
+  <ul style="margin:0;padding-left:0;list-style:none;display:grid;gap:6px">
+    {% for a in anexos %}<li><a href="{% url rota_anexo pedido.pk a.pk %}">{% icone "baixar" "sm" %} {{ a.nome }}</a> <span class="muted" style="font-size:12px">{{ a.tamanho|filesizeformat }} · {{ a.criado_em|date:"d/m/Y" }}</span></li>{% endfor %}
+  </ul>
+  {% endif %}{% endwith %}
+</section>
